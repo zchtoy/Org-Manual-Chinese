@@ -1,0 +1,1002 @@
+* 日期与时间
+  为了协助进行项目计划. TODO事项可以加上日期和时间的标签. 这种带有日期和时间信息的特定字符串在Org-mode中被称呼为时间戳(timestamp). 这可能会让人有点迷糊,因为时间戳常常用来标识事情是什么时候创建或改变的. 然而,在Org-mode中,该名称的意义更加广泛
+** 时间戳,最后期限和规划日期
+   时间戳以一种特定的格式来标识日期(也可能是时间或一个时间段),比如想这样:`"< 2003-09-16 Tue >"[fn:日期与时间1] ,`< 2003-09-16 Tue09:39 >`,`‘< 2003-09-16 Tue 12:00-12:30 >`[fn:日期与时间2]. 时间戳可以放在标题和条目的任意位置处. 带有时间戳的条目在agenda视图中会显示在特定的日期区域(参见[The weekly/daily agenda][周/日agenda]). 时间戳有以下几种格式:
+   * 单纯的一个时间点,一般用于单次的约会,会议等
+	 时间戳最基本的作用就是为某事项分配一个日期/时间. 这就好像在日程表中安排一项日程一样. 当用timeline或agenda视图查看安排时,带有时间戳的事项就会出现在时间戳指示的日期处.
+	 #+BEGIN_SRC org
+         * Meet Peter at the movies <2006-11-01 Wed 19:15>
+         * Discussion on climate change <2006-11-02 Thu 20:00-22:00>
+	 #+END_SRC
+   * 带有重复间隔的时间戳
+	 如果你想标识某件事不仅仅是在指定的那天需要去办,而且在之后的时间里,每隔N天(d),周(w),月(m)或年(y)也需要重复的做这件事情. 这时你可以在时间戳中包含重复间隔的信息. 例如下面的例子说明了每周周三都要去作的事情
+	 #+BEGIN_SRC org
+         * Pick up Sam at school <2007-05-16 Wed 12:30 +1w>
+	 #+END_SRC
+   * diary风格的类lisp表达式(Diary-style sexp entries)
+	 要表达更复杂的时间需求, Org-mode可以使用diary风格的类lisp表达式来表示时间,这种表达式是由Emacs内置的calendar/diary包实现的.[fn:日期与时间3]. 下面是一个例子
+	 #+BEGIN_SRC org
+        * 22:00-23:00 The nerd meeting on every 2nd Thursday of the month
+          <%%(org-float t 4 2)>
+	 #+END_SRC
+   * 时间段
+	 用`--`连接起来的两个时间戳就表示一个时间段. 下面是一个例子
+	 #+BEGIN_SRC org
+         ** Meeting in Amsterdam
+            <2004-08-23 Mon>--<2004-08-26 Thu>
+	 #+END_SRC
+   * 无效的时间戳
+	 跟一般的时间戳差不多,只是用方括号代替尖括号. 这种时间戳不会影响事项在agenda中的显示
+	 #+BEGIN_SRC org
+         * Gillian comes late for the fifth time [2006-11-01 Wed]
+	 #+END_SRC
+** 创建时间戳
+   Org-mode中的时间戳必须是复合特定的格式的. 因此Org提供了下面这些命令生成正确格式的时间戳
+   * C-c . (org-time-stamp) ::
+	该命令提示你输入日期然后插入对应的时间戳. 如果执行该命令时,光标已经处于时间戳上,则该命令修改时间戳,而不是插入新的时间戳. 如果连续两次成果执行该命令,则插入的是一个时间段.
+   * C-c ! (org-time-stamp-inactive) :: 
+	类似于C-c . 但是插入的是一个无效的(inactive)时间戳,这种时间戳不会影响事项在agenda上的显示
+   * C-u C-c . /C-u C-c ! :: 
+	类似`C-c .`和`C-c !`,但是包含日期和时间. 默认的时间会自动四舍五入到每5分钟为单位.参见选项`org-time-stamp-rounding-minutes`
+   * C-c C-c  :: 
+	更正时间戳,如果星期数错了或者没有,就会修正或者插入正确的星期数
+   * C-c < (org-date-from-calendar) :: 
+	插入Calendar窗口中光标所处的日期所对应的时间戳
+   * C-c > (org-goto-calendar) :: 
+	打开Emacs Calendar窗口并定为到今天. 若光标处于时间戳处,则定为到时间戳表示的位置
+   * C-c C-o (org-open-at-point) :: 
+	在agenda窗口中打开时间戳所指定的日期或时间段(参见章节[ The weekly/daily agenda][周/日agenda])
+   * S-<left> (org-timestamp-down-day) / S-<right> (org-timestamp-up-day) ::
+	减少/增加光标所在的日期一天. 这些按键序列与shift-selecton及相关模式相互冲突(参见章节[ Packages that lead to conflicts with Org mode][与org-mode冲突的包])
+   * S-<up> (org-timestamp-up) / S-<down> (org-timestamp-down) :: 
+	更改光标所处的时间戳中的各个部分(年,月,日,时,分). 若时间戳是一个类似‘15:30-16:30’的时间段,则修改第一个时间也会同时改变第二个时间,为的是保持时间跨度不变. 若想修改时间跨度,请直接修改第二个时间. 需要注意的是,若光标不是处于时间戳中,而是处于标题上,则该键序列会修改事项的优先级(参见章节[Priorities][优先级]).这些按键序列与shift-selecton及相关模式相互冲突(参见章节[ Packages that lead to conflicts with Org mode][与org-mode冲突的包])
+   * C-c C-y (org-evaluate-time-range) :: 
+		根据时间段计算出时间跨度显示在minibuffer上. 如果带有前缀参数,则将结果写道时间段的后面(若是在表格中,则写到下一列的位置)
+*** 日期/时间的提示窗口
+	当Org-mode提示输入日期/时间时,会有一个默认值,这个默认值是以缺省的格式来显示的,这给人的感觉似乎只能输入这种特定的格式的时间才行. 其实Org-mode可用处理任何包含有日期/时间信息的字符串,并且很智能的提取出其中的日期/时间信息. 例如你可以使用`C-y`粘贴email中的内容(可能有多行). Org-mode会丢弃任何不符合默认日期/时间格式的字符串,从而提取出其中的日期/时间信息. 提示的默认值一般来说是当前日期,但是如果是在修改一个已经存在的时间戳或者输入时间段的第二个时间戳信息时,默认值使用的是buffer中的哪个时间戳信息. 当输入日期信息时, Org-mode假设大多数时候你想要输入的都是未来的日期,因此如果你没有输入月/年,同时你输入的天/月又比今天要早时,Org-mode会基于"你输入的是未来的日期"这个假设自动填充月/年信息[fn:日期与时间4]. 如果输入的日期被自动调整到未来的日期,时间提示符会出现`(=>F)`以此来提醒你
+
+	举个例子,假设今天是 *2006年6月13日* . 下面列出一些输入和实际解释的对应关系,粗体部分为org-mode填入部分
+	#+BEGIN_SRC org
+      3-2-5         ⇒ 2003-02-05
+      2/5/3         ⇒ 2003-02-05
+      14            ⇒ *2006-06*-14
+      12            ⇒ *2006-07*-12
+      2/5           ⇒ *2007*-02-05
+      Fri           ⇒ nearest Friday after the default data
+      sep 15        ⇒ *2006*-09-15
+      feb 15        ⇒ *2007*-02-15
+      sep 12 9      ⇒ 2009-09-12
+      12:45         ⇒ *2006-06-13* 12:45
+      22 sept 0:34  ⇒ *2006*-09-22 0:34
+      w4            ⇒ ISO week for of the current year *2006*
+      2012 w4 fri   ⇒ Friday of ISO week 4 in 2012
+      2012-w04-5    ⇒ Same as above
+	#+END_SRC
+
+	另外,你还可以输入相对日期,格式是第一个字符用加减号开头,随后是一个用来表示时间长度的数字和一个用来表示天(d)/周(w)/月(m)/年(y)这种时间单位的字符. 如果以一个`+/-`开头,则表示日期是相对于今天来说的. 如果是以两个`+/-`开头,则表示是相对于默认日期来说的. 如果你省略了表示时间单位的哪个字符,则默认为天. 下面是一些例子
+	#+BEGIN_SRC org
+      +0            ⇒ today
+      .             ⇒ today
+      +4d           ⇒ four days from today
+      +4            ⇒ same as above
+      +2w           ⇒ two weeks from today
+      ++5           ⇒ five days from default date
+      +2tue         ⇒ second Tuesday from now.
+      -wed          ⇒ last Wednesday
+	#+END_SRC
+
+	时间函数能够理解英文中的月份了星期几的缩写形式. 如果你像是用英文全称或其他语言,请配置变量`parse-time-months`和`parse-times-weekdays`
+
+	由于当前的Emacs实现并不能合理的表示所有的日期,因此默认情况下Org-mode强制日期的合理区间为1970年-2037年,因为这区间的时间对于所有的Emacs实现都是可处理的. 如果你想使用超过这个时间段的日期,请先阅读变量`org-read-date-force-complatible-dates`的文档字符串
+
+	定义一个时间段有两种方式,一中方式是用一个或两个`-`将开始和结束时间连接起来. 另一种是用`+`将开始时间与时间段长度连接起来. 举例子如下
+	#+BEGIN_SRC org
+      11am-1:15pm    ⇒ 11:00-13:15
+      11am--1:15pm   ⇒ same as above
+      11am+2:15      ⇒ same as above
+	#+END_SRC
+
+	除了minibuffer中的提示符,Org-mode也可能会弹出一个calendar窗口让你选择日期[fn:日期与时间5]. 在calendar窗口中,你可以通过单击日期或直接安回车的方式选择日期,随后该日期会插入到提示符中去. 你可以在光标不离开minibuffer的同时控制calendar. 命令如下:
+	#+BEGIN_SRC org
+      <RET>           Choose date at cursor in calendar.
+      mouse-1        Select date by clicking on it.
+      S-<right>/<left>     One day forward/backward.
+      S-<down>/<up>     One week forward/backward.
+      M-S-<right>/<left>   One month forward/backward.
+      > / <          Scroll calendar forward/backward by one month.
+      M-v / C-v      Scroll calendar forward/backward by 3 months.
+      M-S-<down>/<up> Scroll calendar forward/backward by one year.
+	#+END_SRC
+
+	日期/时间提示符的这些操作看起来很复杂,但是你很快就能适应它们, 随后你会觉得使用其他方式输入日期/时间很不方便. 为了帮助你理解你输入的到底是什么日期,对你输入的实时解释会显示在minibuffer中[fn:日期与时间6]
+*** 定制时间格式
+	Org-mode使用ISO8601的日期和时间规范. 如果你不习惯此规范想换成其他格式的显示方式,你需要配置变量`org-display-custom-times`和`org-time-stamp-custom-formats`
+	* C-c C-x C-t (org-toggle-time-stamp-overlays)
+	  切换客户化定制的日期/时间显示的格式
+	
+	在输入时间/日期时,Org-mode还是修安排使用默认的格式. 实际上,客户化定制的时间格式并不会正在改变文件中的实际时间格式(存入文件的还是以默认格式存入的). 它只是在显示时转换成客户化定制的格式显示而已. 因此就会造成下面这些后果
+	- 你不能把光标移动到时间戳内部了,你只能从时间戳前面直接跳到时间戳的后面
+	- `S-<up>`,`S-<down>`不能再用于调整时间戳的内部组件了. 如果光标在时间戳前面,则`S-<up>/<down>`跟`S-<left>/<right>`一样,增减一天. 如果光标在时间戳后面,则时间戳增减一分钟
+	- 如果时间段或包含了重复间隔信息的时间戳是不会被转换显示的,还是保留原样
+	- 当你一个字符一个字符的删除时间戳时,时间戳只有在全部属于ISO时间戳的字符被删除后,才会从当前buffer中消失.
+	- 若在表格中包含了日期,则若定制的时间格式比原格式长,表格的对齐会被搞乱,如果比原格式短,则可用正常对齐
+        
+** 最后期限和规划日期
+   时间戳或许比指定关键字更有助于规划日期.时间戳和关键字在被引用时都可以快速定位.
+   * 最后期限(DEADLINE)
+         任务假定完成的日期
+	 当到达最后期限时,该任务会显示在agenda中. 另外在today这个agenda上也会警示一些快要(由变量org-deadline-warning-days决定提前多少天开始警告)或者已经逾期的任务,该警示会一直持续到任务标识为完成后才消失. DEADLINE的一个例子如下:
+	 #+begin_src org
+       *** TODO write article about the Earth for the Guide
+       DEADLINE: <2004-02-29 Sun>
+       The editor in charge is [[bbdb:Ford Prefect]]
+	 #+end_src
+	 你可以在设置DEADLINE的同时设置提前多少天发出警示,例如下面的例子表示提前5天发出警示
+	 #+begin_src org
+       DEADLINE: <2004-02-29 Sun -5d>    
+	 #+end_src
+         如果将org-agenda-skip-deadline-prewarning-if-scheduled设置为t时,且任务已经获得规划日期,此时将不发出警告.
+   * 规划日期(SCHEDULED)
+	 当到达规划日期及之后,该任务会在agenda中一直显示[fn:日期与时间7]. 另外在today这个agenda上会显示今天距离规划日期已经过去多少天了. 该显示会一直持续到任务被标记为完成状态为止. 下面是一个例子
+	 #+begin_src org
+         *** TODO Call Trillian for a date on New Years Eve.
+           SCHEDULED: <2004-12-25 Sat>
+	 #+end_src
+         如果您想在agenda里推迟显示这个任务,请使用
+         #+BEGIN_SRC org
+         SCHEDULED: <2004-12-25 Sat -2d>
+         #+END_SRC
+         此任务扔然会安排在25th,但是会在两天后进行显示.在任务包含重复执行时,这个延迟对所有事件有效;如果您仅希望对任务的第一个事件的延迟有效,请使用'--2d',参考org-scheduled-delay-days和org-agenda-skip-scheduled-delay-if-deadline获取详细信息.
+         *重要:* 在Org-mode中规划一个项目与我们规划一个会议不同.预约一个会议就是一个简单的约定,你会使用一个简单列表时间戳来标记这个时间,并在预订的日期显示这个项目.这个常常会使Org用户误解.在Org-mode中,行程安排意思是设定您要有一个行动项上开始工作的日期.
+
+   你可以在最后期限和规划日期使用重复格式的时间戳.You may use timestamps with repeaters in scheduling and deadline entries. Org mode will issue early and late warnings based on the assumption that the timestamp represents the nearest instance of the repeater. However, the use of diary sexp entries like<%%(diary-float t 42)> in scheduling and deadline timestamps is limited. Org mode does not know enough about the internals of each sexp function to issue early and late warnings. However, it will show the item on each day where the sexp entry matches.
+*** 插入最后期限和规划日期
+	下面的命令使你可以快速插入最后期限和规划日期
+	* C-c C-d (org-deadline)
+	  在标题的下一行插入DEADLINE关键字,该关键字用来标识最后期限信息. 除了插入DEADLINE关键字外,任何CLOSED时间戳都会被删除调.
+	  若调用该命令时带了前缀参数,则表示删除DEADLINE关键字. 
+	  根据变量`org-log-redeadline`[fn:日期与时间8]的值,当更改已经存在的最终期限时,可能会记录日志
+	* C-c C-s (org-schedule)
+	  在标题的下一行插入SCHEDULED关键字,该关键字标识了规划日期的信息. 除了插入SCHEDULED关键字外,任何CLOSED时间戳都会被删除.
+	  若调用该命令时带了前缀参数,则标识删除SCHEDULED关键字.
+	  根据变量`org-log-reschedule`[fn:日期与时间9]的值,当更改已经存在的规划日期时,可能会记录日志
+	* C-c / d (org-check-deadlines)
+	  创建一颗sparse tree,在该sparse tree中包含了哪些已经超期或者快要超期(根据变量org-deadline-warning-days决定)的任务.
+	  若带有C-u前缀,则显示当前文件中的所有带有deadline的条目.
+	  若带有数字前缀N,则显示N天内超期的和已经超期的条目,例如`C－1 C-c / d`显示所有明天就会超期的条目.
+	* C-c / b (org-check-before-date)
+	  创建一颗sparse tree,在该sparse tree中包含了那些最终期限或规划日期在给定日期之前的条目
+	* C-c / a (org-check-after-date)
+	  创建一颗sparse tree,在该sparse tree中包含了那些最终期限或规划日期在给定日期之前的条目
+	
+	注意:org-shedule和org-deadline支持通过指定相对时间来标识日期,例如+1d意思是当前时间戳的下一天,-1w意思是当前时间戳的上一个星期
+*** 重复的任务
+	有些任务是重复性的. Org mode通过在DEADLINE,SCHEDULED或普通的时间戳中放置所谓的`repeater`来标识这种重复性的任务. 例如
+	#+begin_src org
+        ** TODO Pay the rent
+        DEADLINE: <2005-10-01 Sat +1m>
+	#+end_src
+	这里的+1m就是repeater. 意思是每个月重复一次. 这里故意指定了一个最后期限< 2005-10-01 >,并指定每个月重复一次.你可以使用y/m/w/d/h来指定重复周期为年,月,周,天,小时.如果你需要在一个DEADLINE中同时表明repeater和指定预警期的话,则repeater需要放在前面,预警期放在后面,例如
+	#+begin_src org
+        DEADLINE: <2005-10-01 Sat +1m -3d>. 
+	#+end_src
+	
+	当任务的最后期限和规划时间超期后,就会在agenda中出现. 因此即使标记带有DEADLINE和SCHEDULE的任务为DONE状态就很重要了. 当你将这种任务标记为DONE状态后,该任务就不会在agenda中出现了. 
+	然而这么作带来一个问题,带有repeater的任务被标识为DONE之后,下一个循环的任务不会自动被激活. 为了解决这个问题,Org mode通过如下方法来绕过这个限制:当你使用命令C-c C-t将任务标记为DONE时, 它会将时间戳信息改为下一个重复的时间. 然后将任务标记回为TODO[fn:日期与时间10].同时原时间戳会被复制并放在deadline的下一行处,这样做的目的是保留一个记录告诉你,该任务其实是在上一个循环任务处完结后而来的. 举例来说,如果把上一个例子中的任务标记为DONE,则该任务会变成:
+	#+begin_src org
+       ** TODO Pay the rent
+         DEADLINE: <2005-11-01 Tue +1m>   
+	#+end_src
+        To mark a task with a repeater as DONE, use C-- 1 C-c C-t (i.e., org-todo with a numeric prefix argument of -1.)
+        A timestamp[fn:日期与时间11] will be added under the deadline, to keep a record that you actually acted on the previous instance of this deadline.
+        As a consequence of shifting the base date, this entry will no longer be visible in the agenda when checking past dates, but all future instances will be visible.	
+	当使用`+1m`作为repeater时,循环日期的增加会严格第一个月一个月地进行. 这样的话,假设你连续三个月忘了付账单了,你再把这个任务标记为DONE后,这个任务的deadline只会增加一个月,因此该任务还是被认为是超期的. 另外,还有一些任务--比如说更换电池,它只需要你在最后一次完成任务的时间点之后开始计算重复时间间隔. 为了应付这些情况,Org mode提供了另外两种repeater:`++`和`.+`. 例如
+	#+begin_src org
+      ** TODO Call Father
+         DEADLINE: <2008-02-10 Sun ++1w>
+         Marking this DONE will shift the date by at least one week,
+         but also by as many weeks as it takes to get this date into
+         the future.  However, it stays on a Sunday, even if you called
+         and marked it done on Saturday.
+      ** TODO Empty kitchen trash
+         DEADLINE: <2008-02-08 Fri 20:00 ++1d>
+         Marking this DONE will shift the date by at least one day, and
+         also by as many days as it takes to get the timestamp into the
+         future. Since there is a time in the timestamp, the next
+         deadline in the future will be on today's date if you
+         complete the task before 20:00.
+      ** TODO Check the batteries in the smoke detectors
+         DEADLINE: <2005-11-01 Tue .+1m>
+         Marking this DONE will shift the date to one month after
+         today.
+	#+end_src
+
+	+若你在某项任务上同时设置了最后期限和规划日期,请保持两者的repater间隔一致.+
+        You may have both scheduling and deadline information for a specific task. If the
+repeater is set for the scheduling information only, you probably want the repeater to
+be ignored after the deadline. If so, set the variable org-agenda-skip-scheduled-ifdeadline-
+is-shown to repeated-after-deadline. However, any scheduling information
+without a repeater is no longer relevant once the task is done, and thus, removed upon
+repeating the task. If you want both scheduling and deadline information to repeat after
+the same interval, set the same repeater for both timestamps.
+	另一种替代repeater的方法是创建一系列的任务拷贝,每隔拷贝使用不同的日期. 命令`C-c C-x c`可以实现这个功能,参见([[结构编辑][结构编辑]])
+** 计算工作时间
+   Org mode可以帮助你记录下某项任务花了多少时间. 当你开始工作时,你可以打开计时功能. 当你停止工作或者标识该任务为DONE时,则停止计时并记录下相应的时间间隔. 它还能计算出每项任务[fn:日期与时间12]所花的总共时间. 同时它还会记录下最近计时任务的历史,这样你可以在这些任务之间快速跳转.
+
+   要在不同的Emacs session之间保存计时历史,使用如下配置
+   #+begin_src elisp
+     (setq org-clock-persist 'history)
+     (org-clock-persistence-insinuate)
+   #+end_src
+   
+   在恢复Emacs后,当你开始对一个新任务进行计时时,此时若有上次未完成的计时[fn:日期与时间13],则会提示你如何处理,详见([Resolving i][分辨空闲时间])
+*** 计时命令
+	* C-c C-x C-i (org-clock-in)
+	  开始对当前任务计时(clock-in),该命令会插入CLOCK关键字和时间戳. 如果插入的CLOCK不是该任务的第一个计时记录,那么这些CLOCK记录都会放入一个名为`LOGBOOK`的抽屉中(由变量`org-clock-into-drawer`设定). 你也可以通过设置`CLOCK_INTO_DRAWER`或`LOG_INTO_DRAWER`属性的方式来覆盖全局设置.若调用该命令时加了C-u前缀参数,则会让你从最近计时的几个任务中选择一个任务进行计时.若调用命令时加了两个C-u前缀参数,则会对光标所在的任务开始计时,并把该任务设置为默认任务. 设置为默认任务后,使用C-u前缀参数调用命令时,可以用d来进行选择.当计时开始后,mode-line上会显示任务及子任务总计所花的时间和正在计时的任务标题. 如果正在进行的任务需要进行工作量评估([#Effort estimates][参见章节Effort estimates]). mode-line上会同时显示预计时间和实际时间[fn:日期与时间14].  如果任务是重复任务([#Repeated tasks][参见章节Repeated tasks]). 则计时只从最后一次重复开始算起[fn:日期与时间15]. 要进一步控制显示在mode-line上的时间,可以配置属性`CLOCK_MODELINE_TOTAL`. 该属性的值为`current`标示只显示当前的计时实例,值为`today`则显示今天所有任务的统计信息(也可以参见变量`org-extend-today-until`),属性值为`all`则统计所有的计时信息,该属性默认值为`auto`[fn:日期与时间16].
+
+	  在mode-line上点击鼠标左键,会弹出计时选项相关的菜单
+
+	* C-c C-x C-o (org-clock-out)
+	  结束计时. 该命令会在计时开始的那一行插入另一个时间戳并自动计算所花费的时间,然后以`=>HH:MM`的形式插入到两个时间戳之间. 通过配置变量`org-log-note-clock-out`可以在记录clock-out时间戳的同时记录其他附加信息.[fn:日期与时间17]
+
+	* C-c C-x C-x (org-clock-in-last)
+          Reclock the last clocked task. With one C-u prefix argument, select the task
+from the clock history. With two C-u prefixes, force continuous clocking by
+starting the clock when the last clock stopped.
+
+	* C-c C-x C-e (org-clock-modify-effort-estimate)
+	  更新当前计时任务的工作量评估信息
+
+	* C-c C-c / C-c C-y (org-evaluate-time-range)
+	  更改时间戳之后重新计算时间间隔. 该命令只在手工修改了时间戳的时候才有用. 如果你用S-<cursor>来更改时间戳,会自动更新时间间隔.
+
+	* C-S-<up/down> (org-clock-timestamps-up/down)
+	  同步增加/减少CLOCK行的结束和开始的时间戳,保持时间段不变
+
+	* S-M-<up/down> (org-timestamp-up/down)
+          On CLOCK log lines, increase/decrease the timestamp at point and the one of
+the previous (or the next clock) timestamp by the same duration. For example,
+if you hit S-M-up to increase a clocked-out timestamp by five minutes, then the
+clocked-in timestamp of the next clock will be increased by five minutes.
+
+	* C-c C-t (org-todo)
+	  改变正在计时的任务为完成状态会自动停止计时
+
+	* C-c C-x C-q (org-clock-cancel)
+	  取消当前计时,This is useful if a clock was started by mistake, or if you ended up working on something else.
+
+	* C-c C-x C-j (org-clock-goto)
+          Jump to the headline of the currently clocked in task. With a C-u prefix arg, select the target task from a list of recently clocked tasks.
+
+	* C-c C-x C-d (org-clock-display)
+	  展示当前buffer中所有子树的计时统计信息. 该命令会在每隔标题的后面添加上总计的计时时间,每隔总计时间等于该标题下各子标题的总计时间之和. 当你切换到其他buffer(参见变量`org-remove-highlights-with-change`)或按下`C-c C-c`后,该总计时间就会消失
+
+	在timeline(参见章节([#Timeline for a single file][Timeline for a single file]))和agenda(参见章节([#The weekly/daily agenda][The weekly/daily agenda]))模式下,按下`l`键可以查看当天做过哪些任务或者哪些任务今天结束了.
+        *重要:* 注意org-clock-out和org-clock-in-last可以设置全局的键绑定并且不修改窗口配置.
+
+*** 计时报告
+	Org-mode可以基于计时信息统计出复杂的报表,这种报表是以Org表格的形式展示的,因此也叫做clock table
+	* C-c C-x C-r (org-clock-report)
+	  在当前文件插入一个dynamic block(see Section A.7 [Dynamic blocks], page 243),内涵一个clock report. 如果执行命令时光标位于一个已经存在的clock table内,则更新该clock table. 如果执行该命令时带了个前缀参数,则跳到第一个clock report并更新之. 计时报告一直包含:ARCHIVE: 标签
+	* C-c C-c /C-c C-x C-u (org-dblock-update)
+	  更新光标所在的dynamic block. 光标需要位于dynamic block的#+BEGIN这一行
+	* C-u C-c C-x C-u
+	  更新所有的dynamic blocks. 如果在buffer中有多个clock table block,则该命令非常有用.
+	* S-<left> /S-<right> (org-clocktable-try-shift)
+	  更改当前clock table的:block参数并更新之. 执行该命令时光标需要处于#+BEGIN: clocktable这一行. 如果:block是`today`,则会切到`today-1`,依次类推.
+
+	下面是一个clock table的框架,使用C-c C-x C-r命令插入到当前buffer.
+       
+      #+begin_src org
+      #+BEGIN: clocktable :maxlevel 2 :emphasize nil :scope file
+      #+END: clocktable
+      #+end_src
+	BEGIN行及后面一系列的选项定义了范围,结构和报告的格式. 这些选项的默认值可以通过变量`org-clocktable-defaults`来配置.
+
+	第一类选项决定了哪些clock entry会被选入统计
+	#+BEGIN_SRC org
+       :maxlevel    Maximum level depth to which times are listed in the table.
+                    Clocks at deeper levels will be summed into the upper level.
+       :scope       The scope to consider.  This can be any of the following:
+                    nil        the current buffer or narrowed region
+                    file       the full current buffer
+                    subtree    the subtree where the clocktable is located
+                    treeN      the surrounding level N tree, for example tree3
+                    tree       the surrounding level 1 tree
+                    agenda     all agenda files
+                    ("file"..) scan these files
+                    file-with-archives    current file and its archives
+                    agenda-with-archives  all agenda files, including archives
+       :block       The time block to consider.  This block is specified either
+                    absolute, or relative to the current time and may be any of
+                    these formats:
+                    2007-12-31    New year eve 2007
+                    2007-12       December 2007
+                    2007-W50      ISO-week 50 in 2007
+                    2007-Q2       2nd quarter in 2007
+                    2007          the year 2007
+                    today, yesterday, today-N          a relative day
+                    thisweek, lastweek, thisweek-N     a relative week
+                    thismonth, lastmonth, thismonth-N  a relative month
+                    thisyear, lastyear, thisyear-N     a relative year
+                    Use S-<left>/<right> keys to shift the time interval.
+       :tstart      A time string specifying when to start considering times.
+                    Relative times like "<-2w>" can also be used. See Section 10.3.3 [Matching tags and properties], page 105 for relative time syntax.
+       :tend        A time string specifying when to stop considering times.
+                    Relative times like "<now>" can also be used. See
+                    Section 10.3.3 [Matching tags and properties], page 105 for relative time syntax.
+       :wstart      The starting day of the week. The default is 1 for monday.
+       :mstart      The starting day of the month. The default 1 is for the first day of the month.
+       :step        week or day, to split the table into chunks.
+                    To use this, :block or :tstart, :tend are needed.
+       stepskip0   Do not show steps that have zero time.
+       fileskip0   Do not show table sections from files which did not contribute.
+       tags        A tags match to select entries that should contribute.  See Section 10.3.3 [Matching tags and properties], page 105 for the match syntax.
+	#+END_SRC
+	
+	第二类选项指定了table的展示形式. 这些选项默认由函数`org-clocktable-write-default`解释,但是我们也可以使用`:formatter`参数来指定由我们自定义的函数来解释[fn:日期与时间18]
+	#+BEGIN_SRC org
+       :emphasize   When t, emphasize level one and level two items.
+       :lang        Language(18) to use for descriptive cells like "Task".
+       :link        Link the item headlines in the table to their origins.
+       :narrow      An integer to limit the width of the headline column in
+                    the org table.  If you write it like ‘50!’, then the
+                    headline will also be shortened in export.
+       :indent      Indent each headline field according to its level.
+       :tcolumns    Number of columns to be used for times.  If this is smaller
+                    than :maxlevel, lower levels will be lumped into one column.
+       :level       Should a level number column be included?
+       :sort        A cons cell like containing the column to sort and a sorting type.
+                    E.g., :sort (1 . ?a) sorts the first column alphabetically.
+       :compact     Abbreviation for :level nil :indent t :narrow 40! :tcolumns 1
+                    All are overwritten except if there is an explicit :narrow
+       :timestamp   A timestamp for the entry, when available.  Look for SCHEDULED,
+                    DEADLINE, TIMESTAMP and TIMESTAMP_IA, in this order.
+       :properties  List of properties that should be shown in the table.  Each
+                    property will get its own column.
+       :inherit-props When this flag is t, the values for :properties will be inherited.
+       :formula     Content of a #+TBLFM line to be added and evaluated.
+                    As a special case, ‘:formula %’ adds a column with % time.
+                    If you do not specify a formula here, any existing formula
+                    below the clock table will survive updates and be evaluated.
+       :formatter   A function to format clock data and insert it into the buffer.
+	#+END_SRC
+	
+	要得到当天中当前level 1 tree的计时总计信息,你可以这样写
+	#+begin_src org
+       #+BEGIN: clocktable :maxlevel 2 :block today :scope tree1 :link t
+       #+END: clocktable   
+	#+end_src
+
+	要统计指定的时间段的信息,则可以这样写[fn:日期与时间19]
+	#+begin_src org
+        #+BEGIN: clocktable :tstart "<2006-08-10 Thu 10:00>"
+                            :tend "<2006-08-10 Thu 12:00>"
+        #+END: clocktable
+	#+end_src
+        从一周前开始到目前为止的区间可以写成
+	#+begin_src org
+        #+BEGIN: clocktable :tstart "<-1w>" :tend "<now>"
+        #+END: clocktable
+	#+end_src
+        当前子树的带有% times的摘要可以写成
+	#+begin_src org
+        #+BEGIN: clocktable :scope subtree :link t :formula %
+        #+END: clocktable
+	#+end_src
+
+	要水平地以紧凑模式来展示至上个星期以来的计时统计,可以这样写
+	#+begin_src org
+        #+BEGIN: clocktable :scope agenda :block lastweek :compact t
+        #+END: clocktable
+	#+end_src
+*** 识别空闲时间和连续计时
+
+    * 识别空闲时间
+
+	如果你正在对某项任务计时,在期间你离开电脑去接了个电话,通常情况下,你需要识别出你离开的那段时间并从计时统计中减去这段时间,或许还需要把这段时间计入其他的计时统计中.
+
+	通过配置变量`org-clock-idle-time`的值为某个整数,例如10或15,当你空闲时间超过这么多分钟之后[fn:日期与时间20],Emacs会提醒你,并询问你要怎么处理这段空闲的时间. 你可以看到空闲时间的长度(不断的持续更新)和一系列的操作选项:
+	* k
+	  要将部分或者全部的离开时间计入正在计时的当前任务中,则键入k. Org随后会询问要将其中的多少分钟计入当前任务. 直接按回车表示所有时间都计入当前任务.
+	* K
+	  类似k,但会立刻停止对任务的计时
+	* s
+	  空闲时间不计入当前任务,并从你离开的时刻接着计时
+	* S
+	  类似s,但是会立刻停止计时. 记住无论哪个选项,连上shift键,都会立刻停止计时
+	* C
+	  撤销当前的计时统计. 需要注意的是,如果没有用C撤销计时,然而在把离开的时间剔除出去后发现剩余时间少于1分钟,则Emacs也会取消这次计时,这么做的目的是为了防止太多零散的计时统计.
+
+	那么,如果想把这段离开的时间作为一项新的计时统计又该怎么处理呢? 只要在减去这段离开时间后立刻对新任务进行计时,Org会注意到你有一段被减去的计时登记在册,然后它会询问是否要将这段计时信息计入新任务的计时中.
+	
+	还存在这么一种可能,假设你正在对某项任务计时,突然电脑电源被关了,一瞬间,所有的buffer都消失了. 通过emacs的auto-saving机制,你可能恢复了最近的一些Org-mode的改变,包括最后的哪个clock in操作.
+
+	在这种情况下,如果你重启了Emacs,并且对任一任务进行计时时,Org会注意到上次session中留有一个悬空的clock in操作,然后Emacs会把该悬空的开始时间戳到现在的这段时间识别为空闲时间,并询问你的下一步操作. 其逻辑和行为与普通的空闲时间一致.
+	
+	你也可以通过命令`M-x org-resolve-clocks <RET> (或 C-c C-x C-z)`一次性检查所有在Org Agenda中注册过的Org文件中的悬挂clock in操作.
+    * 连续计时
+
+        You may want to start clocking from the time when you clocked out the previous task. To
+	enable this systematically, set org-clock-continuously to t. Each time you clock in, Org
+	retrieves the clock-out time of the last clocked entry for this session, and start the new clock
+	from there.
+	If you only want this from time to time, use three universal prefix arguments with
+	org-clock-in and two C-u C-u with org-clock-in-last.
+
+** 工作量预估
+   如果你习惯以非常细致的方式作计划,或者你需要提供一份进度评估文档,则你会对每个任务进行进度上的评估. 如果你同时对你的工作进行计时,则随后可以对比进度计划与实际所费时间,这是改进进度评估的一个好方法. 评估所需时间的进度信息存储在属性`Effort`中. 你可以用一下命令来为任务设置进度安排(耗时评估)
+   * C-c C-x e (org-set-effort)
+	 为当前任务设置进度安排(可以输入一个时间). 如果带有一个数字类型的前缀参数,则表示设置第N个可以的值(具体内容见下文). 也可以在agenda视图中用e快捷键调用该函数
+   * C-c C-x C-e (org-clock-modify-effort-estimate)
+	 修改正在计时的任务的耗时评估
+	 
+   很明显,最好是使用Column视图的方式来展示进度评估(参见[#Column视图][Column视图]). 你可以为耗时评估设定多个值,再加上一个COLUMNS格式属性用来展示这些估计值与相关的计时信息(如果你想要对任务进行计时的话). 例如你可以这样设置:
+   #+BEGIN_SRC org
+     #+PROPERTY: Effort_ALL 0 0:10 0:30 1:00 2:00 3:00 4:00 5:00 6:00 7:00
+     #+COLUMNS: %40ITEM(Task) %17Effort(Estimated Effort){:} %CLOCKSUM
+       
+   #+END_SRC
+   你也可以全局地设定这两个值,方法是分别设定变量`org-global-properties`和`org-columns-default-format`. 这在当你想在agenda中使用该配置时特别有用.
+   
+   一种为任务分配耗时评估的方法是切换到column-mode,然后用S-<right>和S-<left>来改变耗时评估的值. 子任务的耗时评估会自动累加到父任务的耗时评估中. 在耗时评估的后一列会显示实际的计时统计信息.
+
+   如果你在daily/weekly agenda中切换到column view的话, effort这一列会累加每天的耗时评估[fn:日期与时间21],你可以使用这项功能来找出计划安排中的空闲时间. 如果想查看指定日期的总体情况,可以设置选项`org-agenda-columns-add-appointments-to-effort-sum`. 则那一天已经开始一段时间的会议也会添加到负荷评估中
+
+   耗时评估也可以在secondary agenda filtering(次要日程过滤??)中使用,在agenda中使用`/`键就能出发该过滤功能(参见[#Agenda commands][Agenda commands]). If you have these estimates defined consistently, two or three key presses will narrow down the list to stuff that fits into an available time slot. (这句话的意思,我是连猜都猜不出来了~)
+
+** 对作笔记进行计时
+   Org-mode提供两种计时器.相对计时器为增加型计时器,可用于记录笔记,例如对会议或观看电影等.另外还提供倒计时器.
+
+   相对计时器和倒计时器使用不同的命令开始计时.
+
+   * C-c C-x O (org-timer-start) ::
+	 开始或重置一个相对计时器.默认此计时器从'0'开始.当使用C-u前缀时,会提供一个开始的偏移量.如果在一个时间点上开始一个计时器,这个时间点会做为默认值开始计时,插入相对时间. 第一次执行该命令时会同时启动相对计时器,并把即使重置为0. 若带了prefix argument则将相对计时器重置为0
+   * C-c C-x ; (org-timer-set-timer) ::
+         开始一个倒计时器.会给用户一个持续时间的提示. org-timerdefault-timer变量设置默认的倒计时时间.可以使用一个数字前缀来修改这个默认值.在agenda buffers里这个命令使用';'同样有效.
+   一旦开始了计时,对于相对计时器和倒计时器的控制使用相同的命令.
+   * C-c C-x . (org-timer) ::
+         插入计时器的当时时间值到buffer.如果没有正在运行的计时器,将会激活一个相对计时器.当使用一个前缀参数,相对计时器会重置.
+   * C-c C-x - (org-timer-item) :: 
+	 插入一个描述列表项,同时也记录下相对时间. 若带了前缀参数,则首先将相对计时器重置为0
+   * M-<RET> (org-insert-heading) :: 
+	 一旦已经插入列表项,则可以用M-<RET>插入新的列表项
+   * C-c C-x , (org-timer-pause-or-continue) ::
+	 暂停/继续相对计时器
+   * C-c C-x _ (org-timer-stop) ::
+         停止计时.在此之后,只能重新开始一个计时器,不能继续原来的计时.这个命令也会将计时器从状态栏移走.
+
+* Capture(捕获) - Refile(整理) - Archive(归档)
+
+  任何一个整理系统都需要具有快速快速捕获创意和任务,并将其与相关资料链接的能力. Org为该功能实现了名为capture的流程. 它还能够将任务(附件)相关的文件存储在某个特定目录下. 在这套系统中,被处理的对象是任务和项目. 通过将已完成的项目整个移动到归档文件中,可以保持系统的紧凑和快速.
+
+** 捕获
+   捕获使得你能够在几乎不打断工作流的情况下快速存储记录. Org捕获新事物的方式深受John Wiegley的remember.el的影响. 自从version6.36开始,org通过配置与remember.el协同工作,随后用org-rembember.el替代rembember.el. 到了8.0版本,org-remember.el完全被org-capture.el所代替.
+
+   如果你的配置文件还是以org-remember.el为基础进行配置的,则你需要用一下方法来升级你的配置文件. 要转换你的org-remember-templates变量,执行命令
+   
+   #+BEGIN_src emacs-lisp
+   M-x org-capture-import-remember-templates RET 
+   #+END_src
+   然后保存org-capture-templates的值
+   
+*** 配置捕获
+	下面的配置设置了一个默认的记录文件并且定义一个全局热键[fn:CRA1]来捕获新资料.
+
+	#+BEGIN_SRC elisp
+        (setq org-default-notes-file (concat org-directory "/notes.org"))
+        (define-key global-map "\C-cc" 'org-capture)
+	#+END_SRC
+*** 使用捕获
+	* C-c c (org-capture) ::
+	 调用org-capture命令.注意,该键绑定是全局性的,然而默认情况下却没有激活:你需要手工安装该键绑定. 如果你定义了捕获模板(参考Section 9.1.3 [Capture templates], page 90),则它会提示你选择其中一个模板或这使用默认模板,当你选择了某个模板后会进入一个新的捕获 buffer. 随后你可以在其中输入要保存的信息.
+	* C-c C-c (org-capture-finalize) :: 
+	 在capture buffer中输入完了要保存的信息后,按C-c C-c会保存记录并退出捕获 buffer,并且会还原捕获前的工作状态,这样你可以继续以前的工作. 若带有prefix arg,则该命令保存好记录后,会跳转到保存新记录的地方.
+	* C-c C-w (org-capture-refile) :: 
+	 使用refile([Refile and copy][参见Refile and copy])流程代替捕获流程. 该命令实际执行的是普通的refile命令,因此执行该命令时需要注意光标所在的位置. 该命令会把接收到的prefix argument传递給org-refile命令
+	* C-c C-k (org-capture-kill) :: 
+         取消捕获这个动作,还原到之前的状态
+
+	在agenda中按k键也可以调用org-capture命令. 通过这种方式调用的org-capture,模板中的日期会插入agenda中光标所处的日期,而不是当前日期.
+
+	要找到最后存储的捕获的位置,使用带前缀的org-capture命令
+
+	* C-u C-c c
+
+	 定位到指定捕获模板的最后存储位置
+
+	* C-u C-u C-c c
+
+	 在当前buffer地打开最后一次捕获存储的位置
+        你可以跳到 org-capture-last-stored书签, 这个书签会自动建立除非将 org-capture-bookmark设置为 nil.
+	要在当前buffer插入捕获的记录,使用C-0 前缀来调用org-capture命令
+*** 捕获模版
+	你可以为不同类型的记录定义不同的模板和存储位置. 创建模板的最简单的方法就是通过customize界面进行.
+
+	* C-c c C
+
+	 用customize界面自定义变量`org-capture-templates`
+
+	在对模板定义进行正式描述之前,让我们来看一个例子. 假设你向定义一个模板来创建一个TODO事项,创建的TODO事项放到名为`Tasks`的heading下并存储在文件`~/org/gtd.org`中, 同时你需要捕获日记并以datetree的形式存入journal.org中,则你可以使用下面的配置信息.
+	#+BEGIN_SRC elisp
+      (setq org-capture-templates
+            '(("t" "Todo" entry (file+headline "~/org/gtd.org" "Tasks")
+               "* TODO %?\n  %i\n  %a")
+              ("j" "Journal" entry (file+datetree "~/org/journal.org")
+               "* %?\nEntered on %U\n  %i\n  %a")))
+	#+END_SRC
+	
+	这时,如果你按下C-c c t,Org会自动生产一个模板:
+	#+BEGIN_src org
+	* TODO
+        [[file:link to where you initiated capture]]
+	#+END_src
+
+	
+	在扩展模板时,%a的表示你调用捕获命令时的位置链接. 当你从email中派生任务时,该链接就特别有用. 
+
+	要为某个特定的模板定义快捷键而不用经过模板选择界面,你可以这样定义键绑定:
+	#+BEGIN_SRC elisp
+      (define-key global-map "\C-cx"
+        (lambda () (interactive) (org-capture nil "x")))
+	#+END_SRC
+**** 组成模板的各个元素
+	 现在让我们来看看模板定义中的各个元素. `org-capture-templates`中的每个entry都是一个列表,由下面几个部分组成:
+
+	* Keys
+
+	 keys用来选择某个特定的模板,它是一个由字母组成的字符串,例如"a"表示按下a键就会选择对应的模板,而"bt"表示按下"bt"这两个键会选择对应的模板. 拥有相同prefix key的keys必须依次排列在list中,并且预先要有一个由2个元素组成的entry来解释prefix key. 下面是一个解释prefix key的entry的例子
+	   #+BEGIN_src elsip
+           ("b" "Templates for marking stuff to buy")
+	   #+END_src
+
+	   
+	   若你没有手工将"C"定义为某个模板的key,则它会用来自定义`org-capture-templates`变量.
+
+	* description
+
+	   关于模板的简短描述,会在选择template界面上显示.
+
+	* type
+
+	   入口的类型,做为一个符号,有效值为:
+
+	   * entry
+
+		 表示Org-mode下的一个节点,带有一个标题. 若target中定义了节点,则会在target节点下创建子节点,否则创建一个顶级节点. 这里target文件必须是一个Org-mode文件.
+
+	   * item
+
+		 表示一个列表项. 会添加在target location下的第一个plain list位置处. 同样的,target file必须是Org文件
+
+	   * checkitem
+
+		 复选框项.与列表项的唯一区别是使用默认模板.
+
+	   * table-line
+
+		 表示表格的一行. 它会添加到target location的第一个表格中. 根据属性(下面会提到)为`:prepend` 和`:table-line-pos`的不同,决定该行放置在表格的具体哪个位置.
+
+	   * plain
+
+		 纯文本
+
+	* target
+
+	   指定被捕获的记录所存放的位置. 在Org-mode文件中,targets通常定义为一个node,被捕获的entry放到该node下. 它还可以是一个table或者是一个list. 大多数target定义时都会包含一个文件名. 但若该文件名为空字符串,则默认使用`org-default-notes-file`表示的文件. 该指定的文件不仅可以由变量指代,还能由函数,Emacs Lisp Form指代.
+
+	   target的可选格式有:
+
+	   * (file "path/to/file")
+		 
+		 被捕获的内容会被放置在file的开头/结尾处
+
+	   * (id "id of existing org entry")
+
+		 被捕获的内容作为该entry的子节点,或插入到entry的body中
+
+	   * (file+heading "path/to/file" "node heading")
+
+		 被捕获的内容放置在该file的指定heading下,但需要保证指定的heading在file中是唯一的.
+
+	   * (file+olp "path/to/file" "level 1 heading" "level 2" ...)
+		 
+		 若file中存在同名的heading,则使用该方法加以明确
+
+	   * (file+regexp "path/to/file" "regexp to find location")
+
+		 使用正则表达式来定位
+
+	   * (file+datetree "path/to/file")
+
+		 在date tree上用今天的日期创建一个heading[fn:CRA2]
+
+	   * (file+datetree+prompt "path/to/file")
+
+		 在date tree上用指定的日期创建一个heading,会提示你输入日期
+
+	   * (file+weektree "path/to/file")
+                 
+                 在week tree上创建一个标题.Week trees按照周进行排序,不会像datetrees那样按着月份进行排序.
+
+	   * (file+weektree+prompt "path/to/file")
+
+                 在week tree上创建一个标题,但是会提示你输入日期
+
+	   * (file+function "path/to/file" function-finding-location)
+
+		  用函数来定位
+
+	   * (clock)
+
+		 定位到正在被计时的entry处
+
+	   * (function function-finding-location)
+
+		 用函数来定位存储文件和位置
+
+	* template
+	   
+	   模板内容. 若内容为空,则会使用默认的模板内容. 模板内容可以是一个字符串,也可以通过(file "path/to/template")这样的语法表示从外部文件中读取模板内容.
+
+        * properties
+
+	   剩下的内容是一些附加属性list:
+
+	   * :prepend
+
+		 通常情况下,新捕获的内容会附加在target location的后面,而该属性会添加在target location的前面
+
+	   * :immediate-finish
+
+		 该属性表示不需要显示捕获 buffer给用户输入更多的信息.直接返回就好. 若所有的信息都能够通过模板变量自动获得的情况下可以使用
+
+	   * :empty-lines
+
+		 插入新捕获的内容时,前后空出多少个空行.
+
+	   * :clock-in
+
+		 为新捕获的item开始计时
+
+	   * :clock-keep
+
+		 若设置了clock-in,则在捕获动作完成后,依然保持计时器的继续运行
+
+	   * :clock-resume
+
+		 若捕获操作中断了对之前任务的计时,则在完成捕获操作之后继续对之前任务进行计时. 
+
+		 需要注意的是,:clock-keep的优先级高于:clock-resume,若两者都设置为t,则当前计时器会启动,而前一个计时器不会继续运行.
+
+	   * :unnarrowed
+
+		 不要narrow target buffer,显示target buffer的所有内容. 默认情况下会narrow target buffer,让它只显示捕获新事物的那节点内容
+
+	   * :table-line-pos
+
+		 设置捕获的内容插入到table的位置. 它的格式类似于"II-3",表示它是表格中第二部分(以-------分隔)的第三行
+
+	   * :kill-buffer
+		 
+		 若target file是未打开的状态,则在捕获完成之后,自动kill掉新打开的buffer
+**** 模板扩展
+	 模板内容中可以有一些以"%"[fn:CRA3]开头的特殊变量,当对模板进行扩展时,会动态插入它所表示的值
+
+     | %[file]    | 插入file的内容能够                                                                                                                              |
+     | %(sexp)    | 插入sexp的返回值,sexp必须返回字符串                                                                                                             |
+     | %^{prompt} |   |
+     |            |                                                                                                                                                 |
+
+     | %[file]     | 插入指定文件的内容.                                                   |
+     | %(sexp)     | 插入Evaluate Elisp sexp的返回值.sexp必须返回字符串                    |
+     | %<...>      | 按...表示的格式插入时间戳信息....的格式参见format-time-string函数说明 |
+     | %t          | 插入日期                                                              |
+     | %T          | 插入日期与时间                                                        |
+     | %u, %U      | 类似%t和%T,但是插入的时间戳是inactive的(以[]括起来的)                 |
+     | %i          | 使内容的首字母大写,若调用捕获命令时,有选中内容,则插入选中内容         |
+     | %a          | 注释,一般情况下是函数org-store-link创建的链接.                        |
+     | %A          | 类似%a,但会提示输入链接的描述部分                                     |
+     | %l          | 类似%a, 但仅插入文字链接.                                             |
+     | %c          | kill-ring中的当前内容能够                                             |
+     | %x          | 粘贴板的内容                                                          |
+     | %k          | 当前正在计时的任务title                                               |
+     | %K          | 当前正在计时的任务的链接                                              |
+     | %n          | 用户名,变量(user-full-name)的值                                       |
+     | %f          | 捕获命令调用时当前buffer所对应的文件名                                |
+     | %F          | 类似%f,但显示全路径                                                   |
+     | %:keyword   | 链接类型的特定信息,请参考下面表格.                                    |
+     | %^g         | 提示输入tag,使用target file中的tags列表作为可选项                     |
+     | %^G         | 提示输入tag,使用agenda中所有注册的file中的tags列表作为可选项          |
+     | %^t         | 类似 %t, 但是会提示你输入日期.  同样的还%^T, %^u, %^U. 这几个变量.    |
+     |             | 还可以用类似%^{birthday}t这样的格式来为提示做出说明                   |
+     | %^C         | 交互选择使用删除(kill)还是裁剪(clip).                                 |
+     | %^L         | 类似%^C, 但仅做为链接插入.                                            |
+     | %^{prop}p   | 提示用户为名为prop的属性赋值                                          |
+     | %^{prompt}  | 提示用户输入某个字符串. 还可以为用户提供默认值和补全值,               |
+     |             | 格式为%^{prompt竖线default竖线completion2竖线completion3...}.         |
+     |             | 使用方向键可以选择历史数据.                                           |
+     | %\1 ... %\N | 插入%^{prompt}的第N个值, N是一个数字,从1开始                          |
+     | %?          | 完成模板后,将光标置于此处.                                            |
+	 
+	 还有一些变量是与特定的link type[fn:CRA4]所特有的
+
+         | Link type                        | Available keywords                                     |
+         |----------------------------------+--------------------------------------------------------|
+         | bbdb                             | %:name %:company                                       |
+         | irc                              | %:server %:port %:nick                                 |
+         | vm, vm-imap, wl, mh, mew, rmail, | %:type %:subject %:message-id                          |
+         | gnus, notmuch                    | %:from %:fromname %:fromaddress                        |
+         |                                  | %:to %:toname %:toaddress                              |
+         |                                  | %:date (message date header field)                     |
+         |                                  | %:date-timestamp (date as active timestamp)            |
+         |                                  | %:date-timestamp-inactive (date as inactive timestamp) |
+         |                                  | %:fromto (either "to NAME" or "from NAME")[fn:CRA5]    |
+         | gnus                             | %:group, for messages also all email fields            |
+         | eww, w3, w3m                     | %:url                                                  |
+         | info                             | %:file %:node                                          |
+         | calendar                         | %:date                                                 |
+
+	 要定义扩展模板后,光标所在的位置,用%?表示光标的位置.
+**** 与上下文相关的模板
+	 通过定义变量`org-capture-templates-contexts`可以让模板只在特定的上下文环境中才有效.举例来说假设你有一个模板作用'p'来排序Guns邮件,你可以这样定义这个选项.
+
+	 #+BEGIN_SRC emacs-lisp
+	 (setq org-capture-templates-contexts
+	 '(("p" (in-mode . "message-mode"))))
+	 #+END_SRC
+	 You can also tell that the command key "p" should refer to another template. In that
+	 case, add this command key like this:
+	 #+BEGIN_SRC emacs-lisp
+	 (setq org-capture-templates-contexts
+	 '(("p" "q" (in-mode . "message-mode"))))
+	 #+END_SRC
+	 详细信息请查看变量文档.
+
+** 附件
+   通常我们会为任务/节点添加相关材料. 少量的纯文本说明可以存储在节点内. 使用超链接(see Chapter 4 [Hyperlinks],page 38)可以连接到云端/本地的其他文件上. 
+
+   还有一种方法就是为任务/节点添加附件. 所谓附件是指存储在outline node所属目录中的文件. Org使用每个entry的unique ID作为目录名称,这些目录存放在org文件所属目录的data子目录下[fn:CRA6]. 若该目录纳入了git版本控制中,则org会在目录发生改变后,自动commit.附件系统是John Wiegley先生贡献给Org的.
+
+   文件和目录都可以作为附件添加到某个entry上. 甚至还可以让子节点继承父节点的attachment directory(存放附件的目录),这样整个子树都使用相同的存放附件的目录
+
+   下面是附件相关的命令
+   * C-c C-a (org-attach)
+	 
+	 为entry添加附件的同一接口,该命令会提示你选择用哪种方法为entry添加附件
+	 
+     * a (org-attach-attach)
+	   
+	   选择附件文件,并将它移动到该entry存放附件的目录中. 根据变量`org-attach-method`的不同,附件会拷贝/移动/链接到attachment directory中. 需要注意的是,不是所有的操作系统都支持硬链接.
+
+	 * c/m/l
+
+	   指定用拷贝/移动/链接的方式将附件存放在该entry存放附件的目录中.
+
+	 * n (org-attach-new)
+
+	   创建一个Emacs buffer作为新附件
+
+	 * z (org-attach-sync)
+
+	   同步attachment directory中的附件信息. 若你手工添加了附件到attachment directory中则该命令很有用
+
+	 * o (org-attach-open)
+
+	   打开当前entry的附件. 若有多个附件,则会提示你具体打开那个附件. 用来打开附件的程序由变量`org-file-apps`决定.
+
+	 * O (org-attach-open-in-emacs)
+
+	   类似o,但是强制用emacs打开附件
+
+	 * f (org-attach-reveal)
+	   
+	   打开当前entry用来存放附件的目录
+
+	 * F (org-attach-reveal-in-emacs)
+
+	   类似f,但是前置用emacs的dired打开目录
+
+	 * d (org-attach-delete-one)
+
+	   删除某个附件
+
+	 * D (org-attach-delete-all)
+
+	   删除该entry的所有附件. 一个更安全的方法是用dired打开存放附件的目录,然后手工删除所有附件
+
+	 * s (org-attach-set-directory)
+
+	   为该entry设置指定的目录作为存放附件的目录. 该命令通过为entry设置ATTACH_DIR属性来完成这一任务.
+
+	 * i (org-attach-set-inherit)
+
+	   设置ATTACH_DIR_INHERIT属性,这样所有的子节点会使用父节点的attachement directory
+** RSS Feeds
+   通过配置`org-feed-alist`的至,Org可以根据RSS feeds和Atom feeds中的数据新增/改变entry的内容.下面是一个配置的例子
+   #+BEGIN_SRC elisp
+     (setq org-feed-alist
+           '(("Slashdot"
+              "http://rss.slashdot.org/Slashdot/slashdot"
+              "~/txt/org/feeds.org" "Slashdot Entries")))
+   #+END_SRC
+   上面的例子会使得rss.slashdot.org的feed中的item同步到文件～/org/feeds.org的名为`Slashdot Entries`的heading下.
+
+   下面是一些相关的命令
+
+   * C-c C-x g (org-feed-update-all)
+
+     同步org-feed-alist中配置feeds的item到Org文件中
+
+   * C-c C-x G (org-feed-goto-inbox)
+
+     提示你输入一个feed的名称,然后跳转到对于的Org文件
+
+   在同名的heading下,Org会创建一个名为`FEEDSTATUS`的drawer,并在其中存储关于feed中item的状态,这样就能避免同一个item多次添加的情况出现. 因此你需要添加`FEEDSTATUS`到Org文件的drawer列表中.例如
+   #+BEGIN_SRC org
+      ,#+DRAWERS: LOGBOOK PROPERTIES FEEDSTATUS
+   #+END_SRC
+
+   更详细的信息请阅读org-feed.el和org-feed-alist的docstring
+** 外部访问协议
+   外部程序可以根据一定的协议规则通过emacsserver向Org传递要处理的消息. 详细信息请参见 http://orgmode.org/worg/org-contrib/org-protocol.php
+You can set up Org for handling protocol calls from outside applications that are passed to
+Emacs through the emacsserver. For example, you can configure bookmarks in your web
+browser to send a link to the current page to Org and create a note from it using capture
+(see Section 9.1 [Capture], page 89). Or you could create a bookmark that will tell Emacs
+to open the local source file of a remote website you are looking at with the browser. See
+http://orgmode.org/worg/org-contrib/org-protocol.php for detailed documentation
+and setup instructions.
+
+** Refile and copy
+   当回顾捕获到的资料时,常常会对资料进行整理.若要手工完成那些剪切,定位,复制操作则显得太繁琐了.Org提供了以下一些命令帮助我们完成整理的动作
+   * C-c M-w (org-copy)
+
+     类似org-refile,但源entry/region不会被删除
+
+   * C-c C-w (org-refile)
+
+     移动当前entry/region到其他地方. 该命令会告诉你有哪些可以被转移的位置(target),并提供相关的补全功能. 被移动的item(或region中所有的item)会移动到target heading下作为它的子节点. 而根据变量`org-reverse-note-order`的值的不同,可能是作为第一个子节点或最后一个子节点.
+
+     默认情况下,被转移到的target位置为当前buffer的一级heading,但是你也可以自定义target到其他文件.要了解详细信息,请参见变量`org-refile-targets`. 若你希望在选择target location时以路径的方式表示文件内的heading(例如file.org/Heading1/heaindg2表示file.org中的一级标题heading1下的二级标题heading2),请配置变量`org-refile-use-outline-path`和`org-outline-path-complete-in-steps`. 如果你希望移动到一个不存在target location时可以新建node,则配置变量`org-refile-allow-creating-parent-nodes`. 若设置了变量`org-log-refile`[fn:CRA7],则当一个entry被refile时会记录下当前的时间戳信息.
+
+
+   * C-u C-c C-w
+
+     使用refile界面来跳转到target的heading处
+
+   * C-u C-u C-c C-w (org-refile-goto-last-stored)
+
+     跳转到最后refile的target location
+
+   * C-2 C-c C-w
+
+     把entry/region移动到正在计时的item之下
+
+   * C-3 C-c C-w
+
+     移动entry时保留原entry在原处(Refile and keep the entry in place.) 通过配置变量`org-refile-keep`可以设置该动作为refile的默认动作. 不过需要注意的是,该操作可能会导致重复的ID属性.
+
+   * C-0 C-c C-w / C-u C-u C-u C-c C-w (org-refile-cache-clear)
+
+     清理target cache. 通过设置变量`org-refile-use-cache`可以开启缓存refile target的功能. 开始了该功能后,需要用该命令清空refile target缓冲区才能让命令看见新的refile target
+** Archiving 
+   若某个项目完成了,你可能会把代表该项目的tree移开,不要让它再在agenda中出现. 该动作由归档命令来完成.
+
+   * C-c C-x C-a (org-archive-subtree-defaut)
+
+     使用变量`org-archive-defaullt-command`中定义的命令对当前entry进行归档
+
+*** 移动tree到另一个归档文件中
+    最常用的归档动作是将某project tree移动到另一个归档文件中
+
+    * C-c C-x C-s / C-c $ (org-archive-subtree) 
+      
+      将光标位置为起始位置的子树归档到变量`org-archive-location`指定的位置
+
+    * C-u C-c C-x C-s
+
+      检查当前headline是否有可以归档的直接子节点. Org通过对每个subtree检查是否有未完成事项,若未找到,则该命令提示你是否将其归档. 若调用该命令时光标不在headline的位置,则第一级的tree会被检查.
+
+    * C-u C-u C-c C-x C-s
+    As above, but check subtree for timestamps instead of TODO entries. The
+    command will offer to archive the subtree if it does contain a timestamp, and
+    that timestamp is in the past.
+
+   默认情况下,归档的地址是同一目录下的当前文件名后接`_archive`的文件.你也可以为某个heading指定单独的归档地址.更详细的信息请参见变量`org-archive-location`的docstring.
+
+   也可以为单个buffer设置该变量的值,例如
+   #+BEGIN_SRC org
+     #+ARCHIVE: %s_done::
+   #+END_SRC
+
+   若你想为单个的entry或subtree定义自己的归档地址,则给他们定义名为`：ARCHIVE：`属性,并使用归档地址作为其值
+
+   subtree被归档时,同时会有大量的属性记录下当时的上下文信息.例如被归档的entry所属的文件,大纲路径,归档时间等. 可以通过配置变量`org-archive-save-context-info`来调整有哪些附加信息会在归档时被记录
+*** 内部归档
+	若你只是不想让某个subtree不出现在agenda,但是又不想把它移动到其他文件中,你可以使用ARCHIVE tag
+
+	带有ARCHIVE tag(see Chapter 6 [Tags], page 59)的headline具有以下几个特点
+
+	  - 使用visiblitiy cycling(see Section 2.3 [Visibility cycling], page 6)命令不会展开该headline. 若你想强制展开该headline,则可以使用C-TAB,或者设置选项`org-cycle-open-archived-trees`. 当然像`show-all`这样的普通outline命令也会展开被归档的subtree
+	  - 在稀疏树结构里(see Section 2.6 [Sparse trees], page 11), 不显示匹配的内部归档子树,除非配置了org-sparse-treeopen-archived-trees选项.
+	  - 在agenda试图中不会显示被归档tree的内容,除非你配置了选项`org-agenda-skip-archived-trees`. 当然,在agenda中,你也可以使用v a来临时把归档tree的内容显示进来
+	  - 被归档的tree在导出时只会导出headline而不会导出内容. 具体细节参见变量`org-export-with-archived-trees`
+	  - 被归档的tree不会在column视图中显示,除非变量`org-columns-skip-archived-tree`的值为nil
+
+	下面是操作ARCHIVE标签的命令
+	
+	* C-c C-x a (org-toggle-archive-tag)
+
+	  为当前headline添加/去除ARCHIVE标签. 当设置了ARCHIVE标签后,该headline变为灰色,其内容也被隐藏
+
+	* C-u C-c C-x a
+	  
+	  检查当前headline下的是否有哪个直接子节点可以被归档. 类似C-u C-c C-x C-s
+
+	* C-TAB (org-force-cycle-archived)
+
+	  即使是被归档的tree也会被展开
+
+	* C-c C-x A (org-archive-to-archive-sibling)
+
+	  移动当前entry到Archive Sibling下. 该sibling名为`Archive`,且带有`ARCHIVE`标签.
+
+* Footnotes
+
+[fn:日期与时间1] 当你手工输入时间戳时,星期不是必须的. 但若你是用Org命令来修改或插入时间戳,则会自动插入星期,这样更方便一些
+
+[fn:日期与时间2] 这里准照的是ISO 8601日期/时间规范. 若要采用其他规范,参见[Custom time format][定制时间规范]
+
+[fn:日期与时间3] 当使用这种diary风格的类lisp表达式时,你需要非常小心检查这些参数的调用顺序. 这种顺序严重依赖于变量`calendar-date-style`(对旧版本的Emacs来说是`european-calendar-style`). 例如要指定日期`2005年12月12日`,根据不同的设置分别可以用`(diary-date 12 1 2005)`,`(diary-date 1 12 2005)`,`(diary-date 2005 12 1)`来表示. 这常常让人很疑惑. 用户可以求助于某些特定函数,例如`org-date`或`org-anniversary`. 这些函数跟那些以`diary-`打头的diary函数功能上差不多,但他们的参数使用的是固定的ISO顺序(年,月,日的顺序)而与`calendar-date-style`的值无关
+
+[fn:日期与时间4] 参见变量`org-read-date-prefer-future`. 你可以通过设置该值为符号`time`(也就是`'time`),这样之后可以让Org-mode当前时间之前的时间说明当成是明天的时间.
+
+[fn:日期与时间5] 如果你不想要calendar出现,配置变量`org-popup-calendar-for-date-prompt`
+
+[fn:日期与时间6] 如果你觉得这会让你分心,通过配置`org-read-date-display-live`来打开/关闭这种显示
+
+[fn:日期与时间7] 它会一直显示,即使本标记为完成状态还是会显示. 如果你不想这样,设置变量`org-agenda-skip-scheduled-if-done`
+
+[fn:日期与时间8] 相对应的#+STARTUP关键字有logredeadline, lognoteredeadline, 和 nologredeadline 
+
+[fn:日期与时间9] 相对应的#+STARTUP关键字有logreschedule, lognotereschedule, 和 nologreschedule
+
+[fn:日期与时间10] 事实上任务变回的目标状态由一下流程决定:先取属性`REPEAT_TO_STATE`的值,然后取变量` org-todo-repeat-to-state`的值,若都取不到,则默认为TODO状态序列的第一个状态
+
+[fn:日期与时间11] 你可以通过更改变量`org-log-repeat`的值来更改这种行为模式,或者设置#+STARTUP选项为logrepeat,lognoterepeat和nologrepeat中的其中一个. 若设置为lognoterepeat,则你会被提示输入记录内容.
+
+[fn:日期与时间12] 仅计算标题层级小于30星的工作任务.这个是org-clock-sum的最大值硬性限制.
+
+[fn:日期与时间13] 若希望Emacs假设你在这段时间内依然是在做这项任务,使用配置(setq org-clock-persist t)
+
+[fn:日期与时间14] 要实现自动进行工作量评估,为`org-clock-in-prepare-hook`增加hook函数来实现工作量评估
+
+[fn:日期与时间15] 该时间同时由属性`LAST_REPEAT`持有
+
+[fn:日期与时间16] 参见变量`org-clock-modeline-total`
+
+[fn:日期与时间17] 对应的单文件设置为` #+STARTUP: lognoteclock-out `
+
+[fn:日期与时间18] 可以通过变量`org-clock-clocktable-language-setup`来设置language item
+
+[fn:日期与时间19] 需要注意的是,所有的参数必须写在同一行,这里之所以分行只是为了好看
+
+[fn:日期与时间20] 对于安装Mac OS X的计算机,所谓的空闲时间指的是用户未操作电脑的时间而不仅仅是不操作Emacs的时间. 对于X11的系统,你可以安装一个辅助程序`x11idle.c`来实现这样的功能,该程序可以在org git分发包的UTILITIES目录下找到. 对于其他系统,空闲时间只是指的没有操作Emacs的时间
+
+[fn:日期与时间21] Please note the pitfalls of summing hierarchical data in a flat list (参见章节[# Using column view in the agenda][ Using column view in the agenda])
+
+[fn:CRA1] 这里C-c c可以换成你想要的任何键序列
+
+[fn:CRA2] 年度的标题数据树可以是标签,所以你可以在文件里使用 * 2013 :noexport: 和 * 2013 ,这样捕获可以将笔记转移到第一个匹配到的位置.
+
+[fn:CRA3] 如果您需要字面上的这些序列之一，请使用反斜杠转义％.
+
+[fn:CRA4] 如果你自己定义了您的链接类型 (请参考  [Adding hyperlink types], page 236), 你使用org-store-link-props保存的任何属性都可以被捕获模板采用类似方式接受.
+
+[fn:CRA5] 这里一直是另一个人,不是使用者本人.请参考变量org-from-is-user-regexp.
+
+[fn:CRA6] 如果你把条目或Org文件从一个文件夹移到另一个文件夹,你需要配置org-attachdirectory变量包含一个绝对路径.
+
+[fn:CRA7] 使用相应的 #+STARTUP 关键字 logrefile, lognoterefile, 和 nologrefile.
+

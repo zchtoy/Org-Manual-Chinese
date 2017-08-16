@@ -1,0 +1,1355 @@
+* Agenda视图
+  根据Org的工作方式,TODO项,时间戳和带标签的标题可以分布在一个或者多个文件中.为了能够查看某一天的项目或者事件,信息必须收集在一起,以一种有条理的方式排序,显示.
+
+  Org可以根据各种条件从各个分散的Org文件中抽取出复核条件的内容,并在一个新buffer中显示. Org为此提供了多种不同的类型的视图:
+ - Agenda像日历一样,可以显示具体日期的信息
+ - TODO列表涵盖所有未完成的行动项目
+ - 匹配视图根据与它们关联的标签、属性和TODO状态显示标题
+ - 时间轴视图按照时间排序的视图显示单个Org文件的所有事件
+ - 文本搜索视图显示包含指定关键字的多个文件的所有条目
+ - 停滞项目视图显示当前无法推进的项目
+ - 自定义视图是特殊搜索和不同视图的组合
+				   
+  提取的信息被显示在特定的Agenda buffer中.这个buffer是只读的,但是提供了一些命令可以访问原Org文件中对应的条目,并且可以远程地编辑这些文件.
+
+  两个变量控制Agenda缓存区如何显示和当Agenda退出时窗口配置是否被恢复:org-agenda-window-setup和org-agenda-restore-windows-after-quit.
+
+
+** Agenda文件
+   要显示的信息通常是从各个Agenda文件中收集来的,这些文件在变量org-agenda-files[fn:Agenda1] 中列出.如果一个目录是这个列表的一部分,那么这个目录中所有扩展名为.org的文件就是列表的一部分.
+
+   因此,即使您只使用单个Org文件,该文件应该放在列表[fn:Agenda2]中.您可以自定义org-agenda-files,但最简单的维护方式是通过以下命令:
+
+
+   * C-c [ (org-agenda-file-to-front) 
+	 
+	 将当前文件加入到Agenda文件列表中.当前文件会被加到列表的前面.如果文件已经在列表中,会被移到前面.带有前缀时,文件被添加/移动到后面.
+
+   * C-c ] (org-remove-file)
+	 
+	 将当前文件从Agenda文件列表中删除
+
+   * C-' / C-, (org-cycle-agenda-files)
+
+	 循环遍历agenda文件列表中的每一个文件
+
+   * M-x org-iswitchb <RET>
+
+	 使用类似iswitchb的界面来在各org buffer之间切换
+
+   Org菜单包含当前的文件列表,可用于访问任何文件.
+
+   如果您想暂时将Agenda集中在不在列表中的一个文件,或者在列表中的某一个文件,或者仅在文件中的子树上,则可以以不同的方式完成此任务.对于单个Agenda命令,您可以在调度程序下按下一次或者多次<键 (参照章节10.2[Agenda调度],第101页).要长时间的限制Agenda范围,请使用以下命令: 
+   * C-c C-x < (org-agenda-set-restriction-lock)
+
+	 永久的限制Agenda到当前子树.当使用前置参数或者光标放在文件中的第一个标题之前,那么Agenda范围设置为整个文件. 这种限制一直有效直到利用C-c C-x >删除,或者在Agenda调度器下键入<或者>.如果有一个窗口正在显示Agenda视图,新的限制将立即生效.
+         
+   * C-c C-x > (org-agenda-remove-restriction-lock)
+
+	 删除由C-c C-x > 所创建的限制.
+
+   若你启用了speedbar.el,则在speedbar frame中还能使用以下命令
+   * < (org-speedbar-set-agenda-restriction)
+
+	 永久地将Agenda限制在Speedbar 框架光标处的项目(一个Org文件或者一个文件的子树).如果有一个窗口正在显示Agenda视图,新的限制将立即生效.永久地将Agenda限制在Speedbar 框架光标处的项目(一个Org文件或者一个文件的子树).如果有一个窗口正在显示Agenda视图,新的限制将立即生效.
+
+   * > (org-agenda-remove-restriction-lock)
+
+	 解除限制
+
+** Agenda调度器
+   视图是通过调度器创建的,通常我们可以设置一个全局快捷键—例如C-c a (参照1.3节[激活] 第3页).在下文中,我们将呈现C-c a 如何访问调度器并列出键盘对应的命令.按下C-c a 之后,就会提示再输入一个字符来执行对应的命令.调度器提供以下默认的命令:
+   
+   * a ::
+	创建类似日历那样的agenda视图(agenda) (参照第10.3.1节 [周/日 Agenda], 第102页)
+   * t / T :: 
+	创建TODO事项列表(TODO list)(参照第10.3.2节 [全局TODO列表], 第104页)
+   * m / M :: 
+	创建匹配某个标签表达式的标题列表(参照第10.3.3节 [匹配标签和属性], 第105页)
+   * L :: 
+	创建当前buffer的时间轴视图(参照第10.3.4节 [时间轴], 第108页)
+   * s :: 
+	创建在条目中必须或不会出现的关键字和/或正则表达式的布尔表达式的条目列表.
+   * / :: 
+	在所有的Agenda文件和通过org-agenda-text-search-extra-files 列出的文件中通过正则表达式搜索.使用Emacs的命令multi-occur.一个前缀参数可以用于指定匹配的上下文的行数,这个参数默认值为1.
+   * # 或 ! ::
+	创建一个停滞项目的列表(参照第10.3.6节 [时间轴], 第108页)
+   * < ::
+	限制一个Agenda命令到当前buffer中[fn:Agenda3].按下<之后,您仍然需要按下选择命令的字符.
+   * < < :: 
+	如果有一个活动区域,限制接下来的命令到该区域.否则,将其限制为当前子树[fn:Agenda4] .按下< <之后,您仍然需要按下选择命令的字符.
+   * * :: 
+	切换粘性Agenda视图.默认情况下,Org只有一个单独的Agenda buffer,并在每次切换视图时进行重建,以确保所有内容是最新的.如果您频繁的在视图之间切换并且视图构建时间烦扰到了您,您可以打开粘性Agendabuffer或者通过变量org-agenda-sticky设置为默认.使用粘性视图,Agenda调度器不会重新创建Agenda视图,只会切换到选择的一个,并且如果需要您可以通过使用r或者g更新Agenda.使用org-toggle-stickyagenda 可以随时切换Agenda视图.
+
+   您还可以定义可通过调度器访问的自定义命令,跟默认命令一样.这包括可以创建包含几个块的扩展的Agendabuffer,例如周Agenda,全局TODO列表和一些特殊标签匹配.参照第10.6节[自定义Agenda视图],第121页
+
+** 内建agenda视图
+   本节我们将介绍内置视图.
+*** 周/日agenda
+   周/日Agenda就像纸质的Agenda一样,用以显示本周或当天的所有任务
+   
+	* C-c a a (org-agenda-list)
+          从Org文件列表中为本周编制一个Agenda.Agenda显示出每一天的条目.使用数字前缀[fn:Agenda5](如C-u 2 1 C-c a a) ,您可以设置要显示的天数
+
+   在Agenda显示的默认天数是由变量org-agenda-span (或以前的org-agenda-ndays)设置的. 这个变量可以被设置为任何您想在Agenda中默认看到的天数,或者一段时间,例如天、周、月或者年.对于每周Agenda,默认从上一个星期一开始(参照org-agenda-start-on-weekday).您也可以使用日期差设置开始日期:(setq org-agenda-start-day "+10d") 将从今天到未来十天开启一个Agenda.
+从Agenda buffer中远程编辑意思是,例如,您可以从Agenda buffer中改变截止日期和职务.Agenda buffer中可用的命令列在第10.5节 [Agenda命令], 第113页.
+
+
+ *与Calendar/Diary整合在一起*
+
+	Emacs包含Edward M. Reingold的日历和日记功能.日历包含不同国家和不同文化的假期的三个月的日历. 日记可以让您跟踪周年纪念日,月相,日出日落,周期性约会(每周,每月)等等.这样,它与Org相当互补.将Org的输出与日记结合起来是非常有用的.
+
+	为了将Emacs日记中的条目包含到Org模式的Agenda中,您只需要定制变量 
+        #+BEGIN_SRC elisp
+        (setq org-agenda-include-diary t)
+        #+END_SRC
+
+        之后,一切将会自动发生.包括假期、周年纪念等在内的所有日记条目将会被包含在通过Org模式创建的Agendabuffer中.为了编辑已经存在的日记条目,可以使用<SPC>, <TAB>和<RET>从Agenda buffer中跳转到日记文件中. 在Agenda buffer中i 命令为当前日期插入一个新条目,以及命令S,M和 C 各自代表,显示日出日落时间,显示月相和转换为其他日历.c可以用来在日历和Agenda之间切换. 
+
+	如果您仅仅为了sexp条目和假期使用日历,不使用上述设置将会更快,而是将条目拷贝或者移动到一个Org文件中.Org模式评价日记式的sexp条目,并且做的更快,因为没有为了首次创建日记显示的开销.请注意,sexp条目必须从左边距开始,在它们之前不允许有空格.例如,Org文件的以下部分将会被处理,并且在Agenda中做出条目[fn:Agenda6]:
+
+	#+begin_src org
+        * Holidays
+	:PROPERTIES: 
+	:CATEGORY: Holiday
+	:END:      
+	%%(org-calendar-holiday) ; special function for holiday names
+        * Birthdays
+	:PROPERTIES: 
+	:CATEGORY: Ann
+	:END:      
+	%%(org-anniversary 1956 5 14) Arthur Dent is %d years old
+	%%(org-anniversary 1869 10 2) Mahatma Gandhi would be %d years old
+	#+end_src
+
+ *从BBDB中读取周年纪念日*
+
+       如果您正在用Big Brothers Database保存您的联络人信息,那么您很可能希望在BBDB中存储周年纪念,而不是在单独的Org或者日记文件中存储.Org支持这点,并且把显示BBDB周年纪念作为Agenda的一部分.所有您需要做的是把以下内容添加到您的Agenda文件中:
+
+       #+BEGIN_SRC org
+       * Anniversaries
+         :PROPERTIES:
+         :CATEGORY: Anniv
+         :END:
+         %%(org-bbdb-anniversaries)
+       #+END_SRC
+       
+       然后,您可以继续为BBDB记录定义周年纪念.基本上,您可以把光标移动到BBDB记录上按下C-o anniversary RET ,然后以格式YYYY-MM-DD或者MM-DD添加日期,后跟一个空格和周年纪念的种类(‘生日’ 或者 ‘结婚纪念日’, 或者一个格式串).如果您省略了种类,默认是‘生日’. 这里有几个例子,文件org-bbdb.el的头中包含更多详细信息.
+       1973-06-22
+       06-22
+       1955-08-02 wedding
+       2008-04-14 %s released version 6.01 of org mode, %d years ago
+       在更改了BBDB之后,或者在Emacs会话中第一个Agenda显示的时候, Org与周年纪念更新它的哈希,Agenda显示就会出现短暂的延迟.然而,从此之后将会非常快,事实上比在Org或者日记文件中一长串‘%%(diary-anniversary)’的条目更快.
+
+       如果您希望看到即将到来的周年纪念,可以使用以下设定方法:
+       #+BEGIN_SRC org
+       * Anniversaries
+         :PROPERTIES:
+         :CATEGORY: Anniv
+         :END:
+         %%(org-bbdb-anniversaries-future 3)
+       #+END_SRC
+       这将给您3天的警告:周年纪念日当日和之前两天.参数是可选的:如果省略,默认是7
+
+ *预约提醒*
+
+       Org可以与Emacs的预约通知工具交互.要添加Agenda文件的预约,使用命令org-agenda-to-appt.这个命令允许您过滤您的预约列表,仅仅添加属于特定类别或者匹配一个正则表达式的预约.为这个预约它将会读取APPT_WARNTIME属性然后覆盖 appt-message-warning-time的值.有关详细信息请参照文档字符串
+
+*** 全局TODO列表
+	全局TODO列表包含所有未完成的TODO项目,格式化并收集到一个单独的地方.
+
+	* C-c a t (org-todo-list)
+
+	  显示全局TODO列表.这将会从所有Agenda文件(参照第10章 [Agenda视图], 第100页)中收集TODO列表到一个单独的buffer中.默认情况下,这将列出不是DONE状态的项目.这个buffer是在Agenda模式下,所以有一些命令可以直接从buffer(参照第10.5节 [Agenda命令], 第113页)中检查和操作TODO项目
+
+	* C-c a T (org-todo-list)
+
+	  跟上述一样,但是允许选择特定的TODO关键字.您也可以给C-c a t指定前缀参数来执行此操作.系统会提示您输入关键字,您可以使用‘|’作为布尔OR运算符指定多个关键字.使用数字前缀,在org-todo-keywords中的第N个关键字会被选中.在Agendabuffer中 r 按键会重新生成关键字,并且您可以在命令前面加一个前缀来改变被选中的TODO键值,例如3 r.如果您需要经常搜索特定关键字,可以定义一个自定义命令(参照第10.2节 [Agenda调度器],第101页).匹配特定的TODO关键字也可以作为标签搜索的一部分(参照第 6.4节 [标签搜索], 第63页).
+
+	TODO项目的远程编辑意味着您可以通过单个按键更改TODO条目的状态.TODO列表中的有效命令在第10.5节 [Agenda commands],第113页有描述
+
+	通常全局TODO列表仅显示TODO关键字的所有标题.这个列表将会非常长.有两个命令可以使其更紧凑:
+
+	- 有些人查看已经计划执行或者有截止日期(参照第8.1节[时间戳],第73页)从来没打开过的TODO项目.配置变量rg-agenda-todo-ignore-scheduled, org-agenda-todo-ignore-deadlines, org-agenda-todo-ignore-timestamp 和/或者 org-agenda-todo-ignore-with-date从全局TODO列表中排除这些项目
+	- TODO可能包含把任务分解为子任务的子级别. 这种情况下,仅从全局列表中列出最高级别的TODO标题忽略掉子级别的项目是足够的.配置变量org-agenda-todo-list-sublevels来实现这个行为.
+	  
+*** 匹配标签和属性
+	如果Agenda文件中的标题标有标签(参照第6章 [标签], 第59页)或者具有属性(参照第7章 [属性和列], 第64页),则可以根据此元数据选择标题,并将其收集到Agendabuffer中. 此处描述的匹配语法也适用于通过C-c / m创建稀疏树.
+
+	* C-c a m (org-tags-view)
+
+	  生成与给定的一组标签相匹配的所有标题列表.该命令提示带有标签的布尔逻辑表达式的选择标准,比如 ‘+work+urgent-withboss’ 或者 ‘work|home’ (参照第6章 [标签], 第59页).如果您经常需要特定的搜索,请为其定义一个自定义命令 (参照第10.2节 [Agenda调度器], 第101页)
+
+	* C-c a M (org-tags-view)
+
+	  如C-c a m一样,但是只选择不是DONE状态的TODO项目的标题并且强制检查子项目(参照变量org-tags-matchlist-sublevels).要排除计划/截止日期的项目,参照变量org-agenda-tags-todo-honor-ignore-options.匹配特定TODO关键字与标签匹配一块也是可能的,参照第6.4节 [标签搜索], 第63页
+
+	在第10.5节 [Agenda命令], 第113页中描述了标签列表中可用的命令
+
+	*匹配语法(Match syntax)*
+	
+	搜索字符串可以使用布尔运算符‘&’为AND和‘|’为OR. ‘&’比‘|’优先级高.这里不能使用括号.用以搜索的元素可以是标签 、匹配标签的正则表达式、或者像 PROPERTY OPERATOR VALUE 这样带有比较操作符的用来比较属性值的表达式.第一个元素前面加 ‘-’ 表示不选匹配的项,加 ‘+’ 表示选择匹配的项.使用 ‘+’ 和 ‘-’ 时,与操作符 ‘&’ 就是可选的了.这里有一些只使用标签的例子.
+	#+BEGIN_SRC org
+      ‘work’
+          Select headlines tagged ‘:work:’.
+      ‘work&boss’
+          Select headlines tagged ‘:work:’ and ‘:boss:’.
+      ‘+work-boss’
+          Select headlines tagged ‘:work:’, but discard those also tagged ‘:boss:’.
+      ‘work|laptop’
+          Selects lines tagged ‘:work:’ or ‘:laptop:’.
+      ‘work|laptop+night’
+          Like before, but require the ‘:laptop:’ lines to be tagged also ‘:night:’.
+	#+END_SRC
+	
+	除了标签,您也可以用大括号指定正则表达式.例如,‘work+{^boss.*}’ 匹配标有‘:work:’ 并且任意以‘boss’开头的标题.
+
+        组标签(参照第6.3节 [标签层次结构], 第62页)可以作为正则表达式展开.例如,如果‘:work:’ 代表一组标签‘:work:lab:conf:’,当检索‘work’ 实际上是检索‘{\(?:work\|lab\|conf\)}’ 并且当检索 ‘-work’ 的时候实际上是检索所有不包含组标签(例如, ‘-{\(?:work\|lab\|conf\)}’)的标题.
+
+        您可以匹配标签的同时测试属性(参照第7章 [属性和列], 第64页).属性可以是实际属性,或者表示其他元数据(参照第7.2节 [特殊属性], 第66页)的特殊属性.例如,“属性”TODO表示条目的TODO关键字,“属性”PRIORITY表示条目的PRIORITY关键字.
+除上述属性以外,LEVEL表示条目的级别.所有检索 ‘+LEVEL=3+boss-TODO="DONE"’列出所有带有 ‘boss’标签并且TODO 关键字不是DONE的三级标题.在具有org-oddlevels-only集合的buffer中,‘LEVEL’不会统计星级,但是‘LEVEL=2’将对应3星等.
+
+	下面是其他的一些例子:
+        
+        #+BEGIN_SRC org
+	`work+TODO="WAITING"`
+        #+END_SRC
+
+	搜索带:work:标签,且TODO关键字为`WAITING`的事项
+
+        #+BEGIN_SRC org
+	`work+TODO="WAITING"|home+TODO="WAITING"`
+        #+END_SRC
+
+	查询work/home中处于wating状态的任务
+
+	当对属性值进行匹配测试时,可以使用大量的操作符. 下面是一些更复杂的例子:
+
+	#+BEGIN_SRC org
+        +work-boss+PRIORITY="A"+Coffee="unlimited"+Effort<2+With={Sarah\|Denny}+SCHEDULED>="<2008-10-11>"
+	#+END_SRC
+	
+	比较类型取决于比较值的写入方式:
+	
+        - 如果比较值是纯数字,则进行数值比较并且运算符 ‘<’, ‘=’, ‘>’, ‘<=’, ‘>=’, 和‘<>’是被允许的
+
+        - 如果比较值用双引号括起来,则进行字符串比较并且同样的运算符是被允许的.
+
+        - 如果比较数值被双引号和角括号括起来(比如‘DEADLINE<="<2008-12-24 18:30>"’),这两个值按照标准Org方式被假定为日期/时间格式,并且相应的进行比较.特殊值没有时间规范比如"<now>"被看成是现在(包括时间), "<today>"以及"<tomorrow>" 代表这些天的00:00时.此外字符串像"<+5d>"或者"<-2m>"也可以被使用,其中 单位d, w, m和y 分别代表天, 星期,月和年.
+
+        - 如果比较值包含在{}中,则执行正则表达式匹配,‘=’意思是属性值与正则表达式匹配, ‘<>’ 的意思是不匹配.
+
+        所以在示例中搜索字符串找到条目被标记‘:work:’ 但是是不没标记‘:boss:’,它也有一个优先值 ‘A’, 一个值为‘unlimited’的属性‘:Coffee:’,一个数值小于2的属性 ‘Effort’,一个匹配正则表达式‘Sarah\|Denny’的属性‘:With:’,并且计划在2008年10月11日之后.
+您可以在检索中利用属性继承配置Org模式,但请注意,这可能会显著减慢搜索速度.有关详细信息,请参照第7.4节 [属性继承], 第67页.
+
+        为了向下兼容和方便输入搜索式,还有一种不同的方法在检索中来匹配TODO状态.方法是,利用‘/’将搜索匹配表达式分成前后两部分,然后为TODO关键字指定一个布尔表达式.语法与标签类似,但应小心使用:例如,若干TODO关键字的正选择无法与布尔AND组合.但是,负选择与AND组合可能是有意义的.为了确定实际上拥有任意一个TODO关键字(导致加速)的行被检查了, 使用C-c a M, 或者等效的在斜杠后面用‘!’开始TODO部分.使用C-c a M 或者‘/!’ 将不匹配在DONE状态下的TODO关键字.例如:
+         ‘work/WAITING’
+           ‘work+TODO="WAITING"’一样.
+         ‘work/!-WAITING-NEXT’  
+           选择标有‘:work:’既不是‘WAITING’也不是‘NEXT’的TODO行.
+         ‘work/!+WAITING|+NEXT’ 
+           选择标有‘:work:’是‘WAITING’或者‘NEXT’的TODO行.
+
+*** 单文件的时间线
+        时间线会收集某个Org文件中所有的带有时间戳的事项,并用时间排序视图显示出来. 该命令的主要目的是提供某个项目的概览.
+
+	* C-c a L (org-timeline)
+	  在时间排序视图中显示某Org文件中所有带有时间戳的事项. 若调用该命令时带了C-u前缀,则还会列出截止到当天还未完成的事项(不管该事项是否带有时间戳)
+
+	  时间线buffer中可用的命令,参见[Agenda commands][Agenda命令]
+*** 搜索视图
+	该视图只是对Org mode下的各事项进行文字匹配查询. 在查找笔记时特别有用.
+	
+    * C-c a s (org-search-view)
+	  
+	  该命令使你可用使用布尔逻辑运算符来匹配子字符串或整个单词的事项
+
+	例如,检索字符串‘computer equipment’将会检索到以‘computer equipment’作为子字符串的条目.如果两个单词被更多的空格或换行符分开,搜索将仍然匹配.搜索视图还可以使用布尔逻辑来搜索条目中的特定关键字.检索字符串‘+computer +wifi -ethernet -{8\.11[bg]}’将检索包含关键字computer和wifi,但是不包含关键字ethernet,并且没有被正则表达式8\.11[bg]匹配,即不包括8.11b和8.11g的笔记条目.为了启动单词检索第一个‘+’是必须的,其他‘+’字符是可选的.有关更多详细信息,请参照命令org-search-view的文档字符串.
+
+        请注意,除了Agenda文件,该命令还将检索被org-agenda-text-search-extra-files 列出的文件.
+*** 停滞项目
+	若你遵从类似David Allen的GTD这样的时间管理系统来组织你的工作,你应该知道有一项工作就是定期的回顾以确定所有的项目都在推进中. 所谓stuck project是指得那种没有定义下一步行动的project. 在作回顾时,你需要找到这些project并为它们制定下一步的行动
+
+	* C-c a # (org-agenda-list-stuck-project)
+
+	  列出所有的停滞项目
+
+	* C-c a !
+	  
+	  自定义变量`org-stuck-projects`,该变量决定了什么是stuck project和如何寻找stuck project
+
+	  基本上你肯定会对该变量进行配置,以适应你的实际情况. 默认的值假设你的project处于第二级的headline,并且若该project拥有`TODO`,`NEXT`,`NEXTACTION`其中一种的TODO状态时,就不是停滞的.
+
+	  假设您以您自己的方式使用Org模式,使用标签PROJECT识别项目,并且使用TODO关键字MAYBE来表示不应该考虑的项目.我们进一步假设TODO关键字DONE标记完成的项目,NEXT和TODO指示下一个操作.标签@SHOP表示购物,即使没有NEXT标签也是下一个动作.最后,如果项目在任何地方包含特殊单词IGNORE,也不应该被列出.在这种情况下,您将首先确定合适的项目,通过tags/todo匹配[fn:Agenda7] ‘+PROJECT/-MAYBE-DONE’,然后检查子树中的TODO,NEXT,@ SHOP和IGNORE,以识别未停滞的项目.
+
+	  正确的配置为:
+	  #+BEGIN_SRC elisp
+          (setq org-stuck-projects
+                '("+PROJECT/-MAYBE-DONE" ("NEXT" "TODO") ("@SHOP")
+                  "\\<IGNORE\\>"))
+	  #+END_SRC
+	  
+	  需要注意一点,一个项目是未停滞的的,Org还会去搜索它的子项目是否为停滞的.
+** 显示和排序
+   agenda view在显示事项前,Org mode会预先准备好要显示的事项,并对这些事项进行排序. 每个事项占据一行的位置. 每一行都以一个包含类别(参照第10.4.1节 [类别], 第109页)的前缀信息开始,前缀信息中包含了该事项的分类信息以及其他重要信息(通过配置`org-agenda-tags-column`可以修改tag在那一列显示,修改`org-agenda-prefix-format`可以配置prefix信息内容). 
+*** 类别
+	agenda显示事项时可以給每个事项分配一个分类标签. 默认情况下,该分类标签的值为事项所属的Org文件名称. 但是你也可以通过在buffer中使用特殊行来指定该分类. 像这样:
+	#+BEGIN_SRC org
+        #+CATEGORY: Thesis 
+	#+END_SRC
+
+	若你要为某个事项或子树分配特定的分类,则需要使用`:CATEGORY:`属性. 
+
+	一般来说,CATEGORY的值不要超过10个字符,这样在agenda中显示时比较好看
+
+	通过定义变量`org-agenda-category-icon-alist`可以为不同的category分配不同的图标.
+*** 时间格式
+	Org mode会检查每个agenda事项中的时间(time-of-day)说明. 这里的时间可以是显示在agenda中时间戳的一部分,像`< 2005-05-10Tue 19:00>`中的一部分. 时间段则由两个时间戳表示,例如`< 2005-05-10 Tue 20:30>--< 2005-05-10 Tue 22:15>`.
+
+	在事项的标题中也可以以纯文本的方式表示时间/时间段(例如`12:45`或`8:30-1pm`). 如果agenda与Emacs diary整合起来了(参见[Weekly/daily agenda][Weekly/daily agenda]),diary事项中指定的时间也会被识别出来.
+
+	在显示agenda时,Org mode会将事项中抽取出来的时间转换成标准的24小时格式并作为prefix的一部分显示出来. 下面是一个例子:
+	#+BEGIN_SRC org
+	  8:30-13:00 Arthur Dent lies in front of the bulldozer
+          12:45...... Ford Prefect arrives and takes Arthur to the pub
+          19:00...... The Vogon reads his poem
+          20:30-22:15 Marvin escorts the Hitchhikers to the bridge
+	#+END_SRC
+	
+	若agenda处于单日制模式, 或只显示当天的事项时,按时间排序的事项被嵌入到时间格中,类似下面这样
+	#+BEGIN_SRC org
+	  8:00...... ------------------
+          8:30-13:00 Arthur Dent lies in front of the bulldozer
+          10:00...... ------------------
+          12:00...... ------------------
+          12:45...... Ford Prefect arrives and takes Arthur to the pub
+          14:00...... ------------------
+          16:00...... ------------------
+          18:00...... ------------------
+          19:00...... The Vogon reads his poem
+          20:00...... ------------------
+          20:30-22:15 Marvin escorts the Hitchhikers to the bridge
+	#+END_SRC
+	
+	时间格的开关由变量`org-agenda-use-time-grid`决定,它的样式由变量`org-agenda-time-grid`决定
+*** Agenda项目排序
+	在显示到视图前,Org mode会对各agenda事项进行排序,排序的规则依agenda视图的种类不同而不同.
+
+	- daily/weekly agenda
+
+	  每天的事项都会被排序. 默认的顺序是,先搜集所有包含明确时间的事项. 这些事项会作为计划显示在列表的最开头部分.  然后事项依据category分组,各分组之间按照变量`org-agenda-files`的顺序排列.  各分组内部按照优先级(参见[Priorities][Priorities])和超过schedued/deadline的程度来排序.
+
+	- TODO list
+
+	  事项按照各category的分类进行排序,在每个分类内部,按照优先级排序(参见[Priorities][Priorities]). 用于排序的优先级继承至priority cookie(什么意思??),此外他还跟事项到期天数有关
+
+	- tag matches
+
+	  事项根本不排序,只是按照找到的顺序列出而已.
+
+	配置变量`org-agenda-sorting-strategy`可以更改排序的方法,并且还可以包括基于条目的工作量估计(参照第8.5节 [工作量估计], 第86页)的标准.
+
+*** 过滤/限制Agenda项目
+        Agenda内置或定制的命令是静态定义的.Agenda过滤器和限制提供两种动态缩小Agenda条目列表的方法:过滤器和限制.过滤器仅作用于项目的显示,而限制在构建Agenda条目列表之前生效.过滤器通常以交互方式使用,而在自定义Agenda命令中定义局部变量时限制通常很有用.
+
+        *在Agenda中过滤*
+
+        * / (org-agenda-filter-by-tag)
+
+              过滤关于标签和/或工作量估计的Agenda视图.这与自定义Agenda命令之间的区别在于过滤速度非常快,因此您可以在不同过滤器之间快速切换,而无需重新创建Agenda[fn:Agenda8]
+
+              系统将提示您输入标签选择；SPC意味着任何标签.在该提示下按下TAB键使用补全来选择标签 (包括没有选择字符的任何标签).然后,该命令将隐藏不包含或继承此标签的所有条目.当使用前缀arg调用时,将删除确实有此标签的条目.在提示情况下输入第二个/将关闭过滤器并且显示已隐藏的条目.在过滤和排除下一个标签之间按+或-切换.
+
+              Org还支持自动上下文标签过滤.如果将变量 org-agenda-auto-exclude-function设置为用户定义的函数,则该函数可以自动确定哪些标签应从Agenda中排除.一旦设置完成,/命令就接受RET 子选项并运行自动排除逻辑.例如,假设您使用Net标签识别需要网络访问的任务,城市差使的Errand标签和拨打电话的Call标签.您可以根据互联网的可用性自动排除这些标签,并且在营业时间之外,可以这样做:
+              
+	#+BEGIN_SRC elisp
+        (defun org-my-auto-exclude-function (tag)
+          (and (cond
+        	((string= tag "Net")
+        	 (/= 0 (call-process "/sbin/ping" nil nil nil
+        			     "-c1" "-q" "-t1" "mail.gnu.org")))
+        	((or (string= tag "Errand") (string= tag "Call"))
+        	 (let ((hour (nth 2 (decode-time))))
+        	   (or (< hour 8) (> hour 21)))))
+               (concat "-" tag)))
+        (setq org-agenda-auto-exclude-function 'org-my-auto-exclude-function)
+	#+END_SRC
+
+        * [] {} 
+        
+              在索视图中向查询字符串添加新的搜索词([和])或新的正则表达式({和}).开头的括号/大括号将添加一个正向搜索项,前缀为‘+’,表示该搜索项必须在条目中出现/匹配.关闭的括号/大括号将添加一个不需要在条目中进行选择的负向搜索项
+
+        * < (org-agenda-filter-by-category)
+
+              根据项目类别筛选当前Agenda视图.再按一次<将删除此过滤器.当使用前缀参数调用时,不包括从Agenda点开始的项目的类别.您可以预先通过选项org-agenda-category-filter-preset添加过滤器(参照下面).
+
+        * ^ (org-agenda-filter-by-top-headline) 
+
+	      过滤当前的Agenda视图,只显示一个点的兄弟和父标题.
+
+	* = (org-agenda-filter-by-regexp)
+
+              以正则表达式过滤Agenda视图:仅显示与用户输入的正则表达式匹配的Agenda条目.当用前缀参数调用时,它将过滤出与正则表达式匹配的条目.使用两个通用前缀参数,它将删除可以累积的所有正则表达式过滤器.您可以预先通过选项org-agenda-category-filter-preset添加过滤器(参照下面).
+
+	* _ (org-agenda-filter-by-effort)
+
+             根据预估工作量过滤Agenda视图.首先您需要在全局设置允许预估,例如:
+	     #+BEGIN_SRC elisp 
+             (setq org-global-properties '(("Effort_ALL". "0 0:10 0:30 1:00 2:00 3:00 4:00")))
+	     #+END_SRC
+             首先通过输入运算符<、>和=中的一个,然后输入在允许范围内的一个预估工作量的数字索引,0代表第10个值,这样您就可以过滤一个工作量.然后过滤器将限制到小于或者等于,等于,大于或者等于选择值的条目.为了运算符的使用,没有定义工作量的项目参照org-sort-agenda-noeffort-is-high 的值进行处理
+
+	* | (org-agenda-filter-remove-all)
+
+              删除当前Agenda视图中的所有过滤器.
+
+        *设置Agenda限制*
+
+        以下是您可以在您的自定义视图Agenda中设置的选项列表(参照第10.6节 [自定义Agenda视图], 第121页).
+
+        * org-agenda-max-entries 
+
+           限制条目数.
+
+	* org-agenda-max-effort
+
+           限制预估工作量(分钟)的持续时间.
+
+	* org-agenda-max-todos
+
+           限制TODO关键字的条目数.
+
+	* org-agenda-max-tags
+
+           限制标签条目的数量.
+
+        当设置为正整数时,每个选项将排除来自其他类别的条目:例如,(setq org-agenda-max-effort 100)将Agenda限制为100分钟的工作量,并排除没有工作量属性的任何条目.如果要包含没有工作量属性的条目,请把org-agenda-max-effort设置为负值.
+
+        一个有用的设置是在自定义命令中本地使用org-agenda-max-entries.例如,此自定义命令将显示带有NEXT TODO关键字的接下来的五个条目.
+
+	#+BEGIN_SRC elisp
+	(setq org-agenda-custom-commands
+	      '(("n" todo "NEXT"
+		 ((org-agenda-max-entries 5)))))
+	#+END_SRC
+
+        一旦您把这五条条目中的一个标记为DONE,重建Agenda将再次显示下一个五条,包括迄今被排除的第一个条目.
+
+        您还可以动态设置临时限制,这将在重建Agenda时丢失:
+
+        * ~(org-agenda-limit-interactively)
+
+              这将提示要应用的限制类型及其值
+
+** Agenda buffer命令
+   Agenda buffer的条目链接它们起源的org文件或日记文件中.不允许编辑日程buffer本身,但提供的命令显示和跳转到原始的入口位置,并从agenda中编辑“远程”组织文件buffer.这样,所有信息只存储一次,去除您的agenda和记录文件可能会被分开的风险.
+一些命令可以执行鼠标点击agenda行.对于其他的命令,光标需要在所需的行.
+
+   *移动*
+
+   * n (org-agenda-next-line)
+
+      下一行 (与<down>和C-n相同).
+
+   * p (org-agenda-previous-line)
+
+      上一行 (与<up>和C-p相同).
+
+   * N (org-agenda-next-item)
+
+      下一项: 与下一行相同,但只考虑项目.
+
+   * P (org-agenda-previous-item)
+
+      上一项: 与上一行相同,但只考虑项目.
+
+   *查看/进入Org文件*
+
+   * <SPC>或mouse-3 (org-agenda-show-and-scroll-up)
+
+      在另一窗口中显示该项目的原始位置.带前缀的,确保抽屉保持折叠.
+   * L (org-agenda-recenter)
+
+      显示原始位置和回到中心窗口.
+
+   * <TAB>或mouse-2 (org-agenda-goto)
+
+      在另一个窗口显示该项目的原始位置.
+
+   * <RET> (org-agenda-switch-to)
+
+      转到该项目的原始位置和删除其他窗口.
+
+   * F (org-agenda-follow-mode)
+
+      切换跟随模式.在跟随模式下,当你通过agenda buffer移动当光标时,其他窗口总是显示在Org文件内相对应的位置.在新agenda buffer的跟随模式状态的初始值可以通过变量org-agenda-start-with-follow-mode进行设置.
+
+   * C-c C-x b (org-agenda-tree-to-indirect-buffer)
+
+      在间接buffer中显示当前项目的整个子树.用一个数字前缀参数n,上升到N级,然后采取那棵树.如果n是负数,去了那么多的层次.带有一个C-u前缀时,不删除先前使用的间接buffer.
+
+   * C-c C-o (org-agenda-open-link)
+
+      打开条目中的链接.这将试图选择被参考的Org节点文本内的所有链接.如果只有一个链接,它将直接打开,不会有选择提示.
+
+   *更改显示*
+
+   * A 
+  
+      交互式选择另一个agenda视图并将其附加到当前视图.
+
+   * o 
+
+      删除其他窗口.
+
+   * v d 或 d (org-agenda-day-view)
+
+   * v w 或 w (org-agenda-week-view)
+
+   * v t (org-agenda-fortnight-view) 
+
+   * v m (org-agenda-month-view)
+
+   * v y (org-agenda-year-view)
+
+   * v <SPC> (org-agenda-reset-view)
+
+      切换到 日/周/月/年视图. 当却换到日或是周预览时,此设置成为后续日程更新的默认值.由于月和年视图创建缓慢,它们不会成为默认值.一个数字前缀参数可以用来直接跳转到一年中的一个特定的日子,周,月或年.例如, 32 d 跳到 2月1日, 9 w 中到ISO的周数9.当设置日,周,或月预览时, 一年也可以在前缀参数中进行编码.例如, 200712 w 将跳转到2007年的第12周. 如果这样一年的规格只有一个或两个数字,它将被映射到区间1938 - 2037.v SPC将根据org-agenda-span的设定值重新设置.
+
+   * f (org-agenda-later)
+
+      向前显示下一个Org-agenda-current-span天数.例如,如果显示覆盖一周,切换到下一周.带有前缀数字时,向前多次org-agenda-current-span天数. 
+
+   * b (org-agenda-earlier)
+
+      向后显示较早日期.
+   * . (org-agenda-goto-today)
+
+      转到今天
+
+   * j (org-agenda-goto-date)
+
+      转到指定日期.
+
+   * J (org-agenda-clock-goto)
+
+      转到当前agenda buffer内的时钟任务.
+
+   * D (org-agenda-toggle-diary)
+
+      切换列入日记条目. See Section 10.3.1 [Weekly/daily agenda],page 102.
+
+   * v l 或 l (org-agenda-log-mode)
+
+      日志切换模式, 已标记的条目虽然日志记录(变量Org-log-done)显示在agenda中,作为是项时钟已经在那天.您可以配置条目类型应包括使用变量org-agenda-log-mode-items.当使用C-u前缀,显示所有可能的日志条目,包括状态变化. 当使用两个前缀参数C-u C-u,显示只有记录信息,没有别的. v L 等同于 C-u v l.
+
+   * v 左方括号 或 左方括号 (org-agenda-manipulate-query-add) 
+
+      包括无效的时间戳到当前视图.仅适用于每周/每日agenda和时间表视图.
+
+   * v a (org-agenda-archives-mode)
+   * v A (org-agenda-archives-mode 'files)
+
+      切换归档模式.在归档模式下,标记归档的树在生成agenda时也会扫描. 当您使用的大写字母A时,所有归档文件都包括在内.退出归档模式,按v a. 
+
+   * v R 或 R (org-agenda-clockreport-mode)
+
+      切换定时上报模式.在这个模式, 每日/每周agenda将始终显示一个带有时钟时间的时间跨度和文件范围所涵盖的当前agenda视图的表格. 在新agenda缓冲这种模式初始设置可以设置变量Org-agenda-start-with-clockreport-mode.通过使用一个前缀参数时,切换模式(即,C-u R),钟表将不显示条目所隐藏的agenda筛选[fn:Agenda9].见变量的Org-clock-report-include-clocking-task.
+
+   * v c 
+
+      显示重叠的时钟条目,时钟间隙,和其他时钟问题,在目前的agenda范围.然后你可以访问时钟线和安装手动.参考变量org-agenda-clock-consistency-checks获取如何自定义定义时钟问题的定义信息.回到正常的agenda显示,按L退出日志模式.
+
+   * v E 或 E (org-agenda-entry-text-mode)
+
+      切换文本条目模式.在文本条目模式下,从Org的一些行agenda线引用的大纲节点将显示在该行下面.参数org-agenda-entrytext-maxlines给出最大行数. 使用数字前缀参数调用此命令将临时修改该数值.
+
+   * G (org-agenda-toggle-time-grid)
+
+      切换时间网格打开和关闭. 参见变量org-agenda-use-timegrid 和 org-agenda-time-grid.
+
+   * r (org-agenda-redo)
+
+      重新创建agenda buffer, 例如反映与S-left和S-right操作时间戳修改后的变化.当buffer是TODO列表时,前缀参数将被解释为创建特定TODO关键字的列表.
+
+   * g (org-agenda-redo)
+
+      同上面的 r.
+
+   * C-x C-s 或 s (org-save-all-org-buffers)
+
+      在当前Emacs会话保存所有Org buffer,并标识的位置.
+
+   * C-c C-x C-c org-agenda-columns
+
+   调用列视图(见第7.5节[列视图],第67页)buffer. 从agenda中的入口,或(如果没有入口点),从agenda视图中的第一个条目中获取列视图格式. 所以,无论该项目将在原有的buffer格式(从属性,从# +柱线,或从默认的变量Org列的默认格式),将用于在agenda.
+
+   * C-c C-x >                                 org-agenda-remove-restriction-lock
+
+   删除限制锁的agenda,如果它目前仅限于一个文件或子树(见第10.1节[agenda文件],第100页).
+
+   *二次过滤和查询编辑*
+
+   详细内容请参考 第10.4.4 [过滤/限agenda项目],111页.
+
+   * / (org-agenda-filter-by-tag)
+
+      使用相对于标签和/或工作量估计过滤agenda视图.
+
+   * < (org-agenda-filter-by-category)
+
+      使用光标位置的类别过滤当前agenda视图.再次按下 < 时将删除此过滤器.
+
+   * ^ (org-agenda-filter-by-top-headline)
+
+      过滤当前agenda视图,只显示同级和父级的标题.
+
+   * = (org-agenda-filter-by-regexp)
+
+      通过正则表达式筛选agenda视图:仅显示与用户输入的正则表达式匹配的agenda项.当使用前缀的说法,它将过滤掉匹配正则表达式的条目.两个通用前缀参数,它将删除所有正则表达式过滤,可累计.您可以添加一个过滤器预设通过选项orgagenda类别过滤器预设(见下文).
+
+   * | (org-agenda-filter-remove-all)
+
+      删除当前Agenda视图中的所有过滤器.
+
+   *远程编辑*
+
+   * 0--9        
+
+      数字参数.
+
+   * C-_ (org-agenda-undo)
+
+      撤消由于远程编辑命令的更改.在agenda buffer和远程buffer全部撤消.
+
+   * t (org-agenda-todo)
+
+      改变项目的待办事项状态,无论是在agenda和在原来的org文件.
+
+   * C-S-right (org-agenda-todo-nextset)
+   * C-S-left (org-agenda-todo-previousset)
+
+      切换到下一组/前一组待办事项关键字.
+
+   * C-k (org-agenda-kill)
+
+         在原来的Org文件内删除当前agenda项目连同属于它的整个子树.如果要远程删除的文本长于一行,则需要由用户确认.请参考变量org-agenda-confirm-kill.
+
+   * C-c C-w (org-agenda-refile)
+
+      转移光标处的条目.
+
+   * C-c C-x C-a 或 a (org-agenda-archive-default-with-confirmation)
+
+      使用org-archive-default-command设置的默认的归档命令归档光标处条目相对应的子树.使用密钥时,将需要确认.
+
+   * C-c C-x a (org-agenda-toggle-archive-tag)
+
+      切换当前标题的归档标签.
+
+   * C-c C-x A (org-agenda-archive-to-archive-sibling)
+
+      将对应于当前项的子树移到它的归档同级.
+
+   * C-c C-x C-s 或 $ (org-agenda-archive)
+
+      归档与当前标题相对应的子树.这意味着条目将被移动到配置文件设置的归档位置,很可能是不同的文件.
+
+   * T (org-agenda-show-tags)
+q
+      显示与当前项关联的所有标签.这是有用的,如果你关闭org-agenda-show-inherited-tags时,但仍然希望看到所有标签偶尔的标题.
+
+   * : (org-agenda-set-tags)
+
+      为当前标题设置标签.如果agenda中有活跃区域,更改区域中所有标题的标记.
+
+   * ,
+
+      设置当前项目的优先级(org-agenda-priority).org模式优先字符的提示.如果你用<SPC>来回复,优先cookie将从条目中移除.
+
+   * P (org-agenda-show-priority)
+
+      显示当前项目的加权优先级.
+
+   * + 或 S-up (org-agenda-priority-up)
+
+      增加当前项目的优先级.优先级在原来的buffer被改变,但agenda是不被求助.请使用 r 键.
+
+   * - 或 S-down (org-agenda-priority-down)
+
+      减少当前项目的优先级.
+
+   * z 或 C-c C-z (org-agenda-add-note)
+
+      向条目添加注释.此记录将被记录,然后提交给放置状态更改说明的同一位置.根据org-log-into-drawer设定,这可能是在抽屉里. 
+
+   * C-c C-a (org-attach)
+
+      与附件有关的所有命令的分配器.
+
+   * C-c C-s (org-agenda-schedule)
+
+      计划此项目.前缀前缀删除调度时间戳
+
+   * C-c C-d (org-agenda-deadline)
+
+      设置此项目的截止日期.前缀前缀删除最后期限.
+
+   * S-right (org-agenda-do-date-later)
+
+      将与当前行关联的时间戳更改为未来.如果日期是在过去,第一次调用这个命令将移动到今天.
+
+      用数字前缀参数,改变它的许多天.例如,3 6 5 S-right会改变它的一年.一个C-u前缀,改变时间一个小时.如果你立即重复命令,它将继续改变小时甚至没有前缀.一双C-u C-u前缀,同样是改变分钟.
+
+      在原来原来的org文件中更改,但更改不是直接反映在agenda buffer.可使用 r 或 g 来更新buffer.
+
+   * S-left (org-agenda-do-date-earlier)
+
+      将与当前行关联的时间戳更改为前一天的.
+
+   * > (org-agenda-date-prompt)
+
+      更改与当前行关联的时间戳. 已选择 > 键,因为在我的键盘上它与S-相同.
+
+   * I (org-agenda-clock-in)
+
+      启动当前项目的时钟.如果一个时钟已经运行,它被首先停止.
+
+   * O (org-agenda-clock-out)
+
+      停止先前启动的时钟.
+
+   * X (org-agenda-clock-cancel)
+
+      取消当前运行的时钟
+
+   * J (org-agenda-clock-goto)
+
+      跳转到另一个窗口运行时钟
+
+   * k (org-agenda-capture)
+
+      像org-capture,但使用光标点的日期作为捕获的默认日期模板.使用org-capture-use-agenda-date变量修改Org-capture的默认行为.
+
+   *向前/向后拖agenda行*
+
+   * M-<up> (org-agenda-drag-line-backward)
+
+      在光标位置向后拖一行[fn:Agenda10].带数字前缀参数,向后拖多行.
+
+   * M-<down> (org-agenda-drag-line-forward)
+
+      在光标位置向前拖一行.带数字前缀参数,向后拖多行.
+
+
+   *批量远程编辑选定条目*
+
+   * m (org-agenda-bulk-mark)
+
+      标记在批量行动点的条目.用数字前缀参数,选中多个连续的条目.
+
+   * * (org-agenda-bulk-mark-all)
+
+      标记所有可见的agenda条目做为bulk action.
+
+   * u (org-agenda-bulk-unmark)
+
+      取消光标位置的bulk action条目.
+
+   * U (org-agenda-bulk-remove-all-marks)
+
+     取消所有的出buli action标记.
+
+   * M-m (org-agenda-bulk-toggle)
+
+      切换光标位置的bulk action标识.
+
+   * M-* (org-agenda-bulk-toggle-all)
+
+      切换所有的bulk action标识.
+
+   * % (org-agenda-bulk-mark-regexp)
+
+      使用正则表达式匹配bulk action标识.
+
+   * B (org-agenda-bulk-action)
+
+      Bulk action:作用于agenda上所有标记的条目.这将提示选择要应用的动作的另一个按键.B的前缀将被传递给s和d命令,批量删除这些特殊的时间戳.默认情况下,标记在删除后删除.如果你想保留这些标识,请设置变量org-agenda-persistent-marks为t或者在提示时按下p键.
+
+      * 开关永久标记.
+
+      $ 归档所有选定的条目.
+
+      A 档案条目移动到他们各自的同级档案.
+   
+      t 改变待办事项状态.这提示了单个待办事项关键字并改变所有选定的条目的状态,绕过阻塞和抑制记录(而不是时间戳).
+
+      + 添加标签到所有选定的条目.
+
+      - 从所有选定项中移除标签.
+
+      s 将所有项目安排到新的日期.改变现有的计划日期按固定天数,在提示符用双加号开始,例如“++8d”或“++2w”.
+
+      * d设置截止日期到特定日期.
+
+      * r 提示一个目标,将所有条目移到目标内.条目将不再在agenda；刷新(g),使条目回到agenda.
+
+      * S 随机安排到未来N天.n将提示对于.与前缀Arg(c-u B S),仅分散在工作日.
+
+      * F 应用function[fn:Agenda11]标记的条目.例如,函数下面将项的类别属性设置为web.
+
+   #+BEGIN_SRC elisp
+   (defun set-category ()
+     (interactive "P")
+     (let* ((marker (or (org-get-at-bol 'org-hd-marker)
+         		(org-agenda-error)))
+   	    (buffer (marker-buffer marker)))
+       (with-current-buffer buffer
+         (save-excursion
+   	   (save-restriction
+   	     (widen)
+   	     (goto-char marker)
+   	     (org-back-to-heading t)
+   	     (org-set-property "CATEGORY" "web"))))))
+   #+END_SRC
+
+   *日历的命令*
+
+   * c (org-agenda-goto-calendar)
+
+      打开Emacs的日历并跳到agenda光标定位的日期.
+
+   * c (org-calendar-goto-agenda)
+
+      当在日历中,计算并显示org模式agenda的日期在光标.
+
+   * i (org-agenda-diary-entry)
+
+      在日记中插入一个新的条目,使用光标的日期和(条目)在标记的日期.这将添加到emacs的日记文件内[fn:Agenda12],在某种程度上类似于日历里的'i'命令.当增加条目时会在另一个窗口弹出日记文件.
+
+      如果您配置og-agenda-diary-file将日记文件指向一个org模式文件,org将在该文件创建条目(使用Org模式语法).大多数条目将存储在基于日期的大纲树中,将便于归档前几个月/年的预约.这棵树将建在一个date_tree属性项,否则随着年顶级条目.Emacs会提示你输入的文本如果你指定它,该条目将不采用交互方式直接创建在org-agenda-diary-file指定的文件内.如果在没有键入文本的情况下,直接在提示处按<RET>,则目标文件将显示在另一个窗口中,以便您在那里完成输入.参见k r命令.
+
+   * M (org-agenda-phases-of-moon)
+
+      按当前日期显示三个月的月亮相位.
+
+   * S (org-agenda-sunrise-sunset)
+
+      显示日出日落时间.地理位置必须设置日历变量,请参考Emacs日历文档.
+
+   * C (org-agenda-convert-date)
+
+      将光标的日期转换其他的地方日历.
+
+   * H (org-agenda-holidays)
+
+      显示光标日期周围三个月的假期.
+
+   * M-x org-icalendar-combine-agenda-files <RET>
+
+      导出包含所有agenda文件的条目的单个日历文件.这是一个全局可用的命令,也可以在日程菜单中使用.
+
+   *导出到文件*
+
+   * C-x C-w (org-agenda-write)
+
+      将agenda视图写入文件.根据选定的扩展文件名,该视图将导出为HTML(.html或.htm),Postscript(.ps),PDF(.pdf),org(.org)和纯文本(任何其他扩展).当寻出org时,只导出原标题的主体,没有子树或继承标签.当使用c-u前缀时,立即打开新建文件.使用变量org-agenda-exporter-settings设置ps-print和htmlize选项.
+
+   *放弃和退出*
+
+   * q (org-agenda-quit)
+
+   退出agenda,删除agendabuffer.
+
+   * x (org-agenda-exit)
+
+   退出agenda,agenda和所有bufferbuffer删除加载的Emacs的agenda的编制.用户创建的访问org文件的buffer不会被删除.
+
+** 自定义agenda视图
+
+   自定义agenda命令有两个目的：存储和快速访问经常使用的待办事项和标签搜索,并创建特殊的复合agendabuffer.自定义日程命令将通过调度员(见第10.2节[agenda调度],第101页）,就像默认的命令.
+
+*** 存储搜索
+
+        自定义搜索的第一个应用程序是用于频繁使用的搜索的键盘快捷键的定义,无论是创建agenda buffer,还是稀疏树(后者仅覆盖当前buffer).
+
+        自定义命令配置在变量orgagenda自定义命令.你可以定制这个变量,例如按C C你也可以直接将它与Emacs Lisp在Emacs初始化文件.以下示例包含所有有效的agenda视图:
+
+        #+BEGIN_SRC elisp
+        (setq org-agenda-custom-commands
+              '(("x" agenda)
+        	("y" agenda*)
+        	("w" todo "WAITING")
+        	("W" todo-tree "WAITING")
+        	("u" tags "+boss-urgent")
+        	("v" tags-todo "+boss-urgent")
+        	("U" tags-tree "+boss-urgent")
+        	("f" occur-tree "\\<FIXME\\>")
+        	("h" . "HOME+Name tags searches") ; description for "h" prefix
+        	("hl" tags "+home+Lisa")
+        	("hp" tags "+home+Peter")
+        	("hk" tags "+home+Kim")))
+        #+END_SRC
+
+        在每个项目的初始字符串定义了你必须按下键的调度指挥C-c a为了访问命令.通常这将只是一个字符,但是如果你有很多类似的命令,你也可以定义两个字母的组合,第一个字符是几种组合一样,作为一个前缀key[fn:Agenda13].第二个参数是搜索类型,后面是匹配的字符串或正则表达式.上面的例子将因此定义:
+
+        * C-c a x 作为一个全球搜索agenda条目计划[fn:Agenda14]本周/天.
+        * C-c a y 作为一个全球性的搜索agenda条目计划本周/天,但只有那些与一小时的规格,如[h]h:mm—认为他们作为约会.
+        * C-c a w 作为一个全球性的搜事索TODO项目与'WAITING'作为TODO项目关键字
+        * C-c a W 作为同一搜索,但只能在当前buffer中显示结果作为稀疏树
+        * C-c a u 作为全球标签搜索标题标题':boss:'但不是':urgent:'
+        * C-c a v 与C-c a u相同,但限制搜索标题,和TODO项目
+        * C-c a U 同样的搜索C-C u,但只在当前buffer和显示结果为稀疏的树
+        * C-c a f 创建一个稀疏树(again:只有当前buffer)与所有包含单词“FIXME”
+        * C-c a h 作为一个前缀命令的家庭标签搜索,你必须按附加键(l,p 或 k)选择一个名称(Lisa, Peter, or Kim)作为附加标签匹配.
+
+        请注意,*树agenda视图需要从组织buffer调用,因为它们仅在当前buffer上运行.
+
+*** agenda块
+
+       另一种可能性是构造包含多个命令的结果的agenda视图,每个命令将在agenda buffer中创建一个块.可用的命令包括了每日或每周agenda(像C-c a a创建的一样),为全局的TODO项目列表(如利用C-c a t创建),和与之相匹配的命令上面讨论:todo,tags 和tags-todo.这里有两个例子:
+
+       #+BEGIN_SRC elisp
+       (setq org-agenda-custom-commands
+             '(("h" "Agenda and Home-related tasks"
+                ((agenda "")
+       	         (tags-todo "home")
+       	         (tags "garden")))
+               ("o" "Agenda and Office-related tasks"
+	        ((agenda "")
+	         (tags-todo "work")
+	         (tags "office")))))
+       #+END_SRC
+
+        这定义了C-c a h创建要在家里完成的多重块视图.结果将让您的agenda buffer包含您本周的agenda,所有TODO事项将带有一个'home'标签,并且所有行将使用'garden'标识.同样C-c a o会对工作任务产生同样的视图.
+
+*** 设置自定义命令的选项
+
+        org模式包含了一些变量调节日程结构和显示.全局变量定义所有agenda命令的行为,包括自定义命令.然而,如果想更改一些自定义视图的设置,您可以在org-agenda-custom-commands内相应位置插入变量名和变量的值.例如:
+
+	#+BEGIN_SRC elisp
+        (setq org-agenda-custom-commands
+              '(("w" todo "WAITING"
+        	 ((org-agenda-sorting-strategy '(priority-down))
+        	  (org-agenda-prefix-format " Mixed: ")))
+        	("U" tags-tree "+boss-urgent"
+        	 ((org-show-context-detail 'minimal)))
+        	("N" search ""
+        	 ((org-agenda-files '("~org/notes.org"))
+        	  (org-agenda-text-search-extra-files nil)))))
+	#+END_SRC
+
+	现在的C-c a w命令只会优先收集条目排序,和前缀格式改为'Mixed:'来替代给出的条目分类.C-c a U命令会让稀疏树变得非常简洁,因为不仅仅匹配的标题层级甚至接着绝配的标题也会显示出来.命令C-c a N会做文本搜索仅限于一个单一的文件.
+
+	对于创建一个块agenda的命令集,org-agenda-custom-commands有两个单独的设置选项.可以在集合中仅对一个命令添加有效的选项,以及对集合中的所有命令有效的选项.前者只添加到命令项中,后者必须在命令项的列表后面.回到块agenda的例子(见第10.6.2 [块agenda],123页),让我们改变C-c a h命令的排序策略为priority-down,但是让结果为'GARDEN'标签查询排序为相反的状态,priority-up.
+
+	这看起来像这样:
+	#+BEGIN_SRC elisp
+        (setq org-agenda-custom-commands
+              '(("h" "Agenda and Home-related tasks"
+        	 ((agenda)
+        	  (tags-todo "home")
+        	  (tags "garden"
+        		((org-agenda-sorting-strategy '(priority-up)))))
+        	 ((org-agenda-sorting-strategy '(priority-down))))
+        	("o" "Agenda and Office-related tasks"
+        	 ((agenda)
+        	  (tags-todo "work")
+        	  (tags "office")))))
+	#+END_SRC
+
+	正如您看到的,值和圆括号设置有点复杂.当有疑问时,使用自定义接口设置这个变量,它完全支持它的结构.只是一个警告:在这个接口中设置选项时,值只能是Lisp表达式.所以,如果这个值是一个字符串,你需要添加双引号周围这个值.
+
+	要控制agenda命令是否可以从特定上下文访问,您可以自定义org-agenda-custom-commands-contexts.比方说,当你在阅读邮件时,只需要显示视图的“o”命令.此时,您将配置选项为:
+
+        #+BEGIN_SRC elisp
+	(setq org-agenda-custom-commands-contexts
+	      '(("o" (in-mode . "message-mode"))))
+	#+END_SRC
+
+	您还可以告诉命令“o”应该是指另一个命令“r”.
+
+	在这种情况下,添加此命令键:
+        #+BEGIN_SRC elisp
+	(setq org-agenda-custom-commands-contexts
+	      '(("o" "r" (in-mode . "message-mode"))))
+	#+END_SRC
+
+	详细信息请参考这个变量的描述.
+
+** 导出agenda视图
+
+   如果您离计算机较远,打印版本的agenda视图可能非常有用. org mode可以将自定义agenda视图导出为纯文本,HTML[fn:Agenda15],Postscript,PDF[fn:Agenda16]和iCalendar文件. 如果您只想偶尔执行此操作,请使用命令
+
+   * C-x C-w (org-agenda-write)
+
+      将agenda视图写入文件.根据所选文件名的扩展名,视图将导出为HTML(扩展名.html或.htm),Postscript(扩展名.ps),iCalendar(扩展名.ics)或纯文本(任何其他扩展名).使用变量org-agenda-exporter-settings来设置ps-print和htmlize在导出过程中使用的选项,例如:
+
+   #+BEGIN_SRC elisp
+   (setq org-agenda-exporter-settings
+         '((ps-number-of-columns 2)
+           (ps-landscape-mode t)
+           (org-agenda-add-entry-text-maxlines 5)
+           (htmlize-output-type 'css)))
+   #+END_SRC
+
+   如果您需要频繁导出某些agenda视图,则可以将任何自定义agenda命令与输出文件名称列表[fn:Agenda17]相关联. 以下是一个例子:首先定义agenda和全局TODO列表的自定义命令以及要导出它们的多个文件. 然后我们定义两个方框的agenda命令,并为它们指定文件名. 文件名可以相对于当前工作目录,也可以是绝对的.
+
+      #+BEGIN_SRC elisp
+      (setq org-agenda-custom-commands
+            '(("X" agenda "" nil ("agenda.html" "agenda.ps"))
+              ("Y" alltodo "" nil ("todo.html" "todo.txt" "todo.ps"))
+              ("h" "Agenda and Home-related tasks"
+               ((agenda "")
+                (tags-todo "home")
+            	(tags "garden"))
+               nil
+               ("~/views/home.html"))
+              ("o" "Agenda and Office-related tasks"
+               ((agenda)
+                (tags-todo "work")
+            	(tags "office"))
+               nil
+               ("~/views/office.ps" "~/calendars/office.ics"))))
+      #+END_SRC
+
+   文件名的扩展名决定了导出的类型. 如果是.html,Org mode将使用htmlize.el包将缓冲区转换为HTML并将其保存到此文件名. 如果扩展名为.ps,则使用ps-print-buffer-with-faces来生成Postscript输出. 如果扩展名为.ics,iCalendar导出将运行在用于构建agenda的所有文件上导出,并将导出限制在agenda中列出的条目中. 任何其他扩展名都会生成纯ASCII文件.
+
+   当您以交互方式使用这些命令之一时,不会创建导出文件,因为这可能会占用太多的开销. 相反,有一个特殊的命令可以在一个步骤中生成所有指定的文件:
+
+   * C-c a e (org-store-agenda-views)
+
+     导出具有与其相关联的导出文件名的所有agenda视图.
+
+   您可以使用自定义agenda命令的选项部分也设置导出命令的选项. 例如:
+
+   #+BEGIN_SRC elisp
+      (setq org-agenda-custom-commands
+            '(("X" agenda ""
+               ((ps-number-of-columns 2)
+                (ps-landscape-mode t)
+	        (org-agenda-prefix-format " [ ] ")
+	        (org-agenda-with-colors nil)
+	        (org-agenda-remove-tags t))
+	       ("theagenda.ps"))))
+   #+END_SRC
+
+   此命令为Postscript导出器设置两个选项,使其以横向格式打印在两列中 - 生成的页面可以被分成两部分,然后在纸张日程中使用. 剩下的设置修改agenda前缀以省略类别和调度信息,而是包括一个复选框来检查项目. 我们还删除标签,使线条紧凑,我们不想使用黑白打印机的颜色. 在org-Agenda-exporter-settings中指定的设置也将适用,但org-agenda-custom-commands中的设置优先.
+
+   从命令行你也可以使用
+   #+BEGIN_SRC shell
+   emacs -eval (org-batch-store-agenda-views) –kill
+   #+END_SRC
+
+   或者,如果需要修改一些参数[fn:Agenda18]
+
+   #+BEGIN_SRC shell
+   emacs -eval '(org-batch-store-agenda-views       \
+                 org-agenda-span (quote month)              \
+                 org-agenda-start-day "2007-11-01"           \
+                 org-agenda-include-diary nil                 \
+                 org-agenda-files (quote ("~/org/project.org")))'  \
+         -kill
+   #+END_SRC
+
+   这将创建限于文件~/org/project.org的agenda视图,无日记条目和30天的范围.
+
+   您还可以允许其他程序进一步处理的方式提取agenda信息. 有关详细信息,请参见A.10 [提取agenda信息],第246页.
+
+** Agenda中使用列视图
+
+   列视图(参见第7.5节[列视图],第67页)通常用于查看和编辑嵌入在组织文件的层次结构中的属性. 从agenda中也可以使用列视图,通过某些标准收集条目.
+
+   * C-c C-x C-c (org-agenda-columns)
+
+      打开agenda中的列视图.
+
+   要了解如何正确使用这一点,重要的是要意识到agenda中的条目不再处于正确的大纲环境中. 这会导致以下问题:
+
+      1. 组织需要作出决定使用哪种COLUMNS格式. 由于agenda中的条目是从不同的文件收集的,并且不同的文件可能具有不同的COLUMNS格式,这是一个不平凡的问题. 组织首先检查变量org-agenda-overriding-columns-format当前是否设置,如果是,则从那里采取格式. 否则它采用与agenda中的第一个项目相关联的格式,或者如果该项目没有特定的格式(在属性或其文件中定义),则使用org-columns-default-format.
+      2. 如果任何列具有定义的摘要类型(请参见第7.5.1.2节[列的属性],第68页),打开agenda中的列视图将访问所有相关的agenda文件,并确保此属性的计算为 最新. 对于CLOCKSUM的特殊属性也是如此. 然后组织将总结agenda中显示的值. 在每日/每周agenda中,这笔款项将包括一天; 在所有其他观点,他们覆盖整个块. 重要的是要意识到,agenda可能会显示相同的条目两次(例如按计划和截止日期),并且可以显示来自同一层级的两个条目(例如父母及其子代). 在这些情况下,agenda中的总结将导致不正确的结果,因为某些值将计数为双倍.
+      3. 当agenda中的列视图显示CLOCKSUM时,这一直是此项目的整个时钟时间. 所以即使在每日/每周agenda中,列视图中列出的时钟也许来自当前视图之外的时间. 这样做的优点在于,您可以将这些值与列出计划总计工作量的列进行比较,列表列出agenda中列视图的主要应用程序之一. 如果您想在显示期间使用时钟表信息,请使用时钟表模式(请按日程表中的R).
+      4. 当agenda中的列视图显示CLOCKSUM_T时,该项目始终是今天的计时时间. 所以即使在每周的agenda中,列视图中列出的时钟仅来自今天. 这可以让您比较您今天在任务上花费的时间,以及已经花费的时间(通过CLOCKSUM)和其计划的总体工作量.
+
+* 丰富的导出
+
+  导出org mode文档时,出口商会尝试在后端尽可能准确地反映文档的结构. 由于诸如HTML和LATEX之类的导出目标允许更丰富的格式化,org mode有如何准备文本以进行丰富导出的规则. 本节总结了org mode缓冲区中使用的标记规则.
+
+** 段落,换行符和引用
+
+   段落至少有一条空行. 如果您需要在段落内执行换行符,请在行尾使用“\\”.
+
+   要保留一个区域中的换行符,缩进和空白行,但是使用正常的格式化,可以使用这个构造,也可以用于格式化诗歌.
+
+   #+BEGIN_VERSE
+    Great clouds overhead
+    Tiny black birds rise and fall 
+    Snow covers Emacs
+    
+        -- AlexSchroeder 
+   #+END_VERSE
+
+   当引用另一个文档中的段落时,通常将其格式化为在左边距和右边距上缩进的段落. 您可以在Org模式文档中包含这样的报价:
+
+   #+BEGIN_QUOTE
+   Everything should be made as simple as possible, 
+   but not any simpler -- Albert Einstein
+   #+END_QUOTE
+
+   如果你想让一些文本居中,就这样做:
+
+   #+BEGIN_CENTER
+   Everything should be made as simple as possible, \\ 
+   but not any simpler
+   #+END_CENTER
+
+** 强调和等宽字体
+
+   你可以使用 *bold*, /italic/, _underlined_ , =verbatim= 和 ~code~ , 如果你必须'+strike-through+' . 代码和逐字字符串中的文本不会针对org mode特定语法进行处理,它会逐字输出.
+
+   要关闭标记文本的字体,您可以将org-fontify-emphasis-text设置为nil. 要缩小可用标记语法列表,您可以自定义org-emphasis-alist. 要微调标记字符前后允许哪些字符,您可以调整org-emphasis-regexp-components. 请注意,在您重新加载Org之前,更改以上变量之一将不会生效,您可能需要重新启动Emacs.
+
+** 水平横线
+
+   一条只有破折号的线条,至少有5存折号才能做为横线导出.
+
+
+** 图像和表格
+
+   Org模式自己的表格(参见第3章[表格],第19页)和用table.el包格式化的表将被正确导出. 对于org mode表,第一个水平分隔线之前的行将成为表标题行. 您可以在表格之前的某个地方使用以下行分配交叉引用的标题和标签,并且在文本中可以使用[[tab:basic-data]]引用对象(参见第4.2节[内部链接]), 第38页:
+
+   #+CAPTION: This is the caption for the next table (or link) 
+   #+NAME: tab:basic-data
+      | ... | ... |
+      |-----+-----|
+
+   可选地,标题可以采取以下形式:
+
+  #+CAPTION[Caption for list of tables]: Caption for table.
+
+  一些后端允许您直接将图像包含在导出的文档中. 如果一个图像文件的链接没有描述部分,例如[[./img/a.jpg]],Org会这样做. 如果您希望为图像定义标题,也可以为内部交叉引用定义标签,请确保该链接本身处于一行,并在＃+ CAPTION和＃+ NAME之前,如下所示:
+
+  #+CAPTION: This is the caption for the next figure link (or table) 
+   #+NAME: fig:SED-HR4049
+   [[./img/a.jpg]]
+
+  这样的图像可以显示在缓冲区内. 请参见第4.4节[处理链接],第41页.
+
+  即使图像和表格是字幕结构的突出示例,相同的标题机制也可应用于许多其他(例如,LATEX方程,源代码块). 根据出口后端,这些可能或可能不会被处理.
+
+** 文字例子
+
+   你可以包括不应该加上标记的文字示例. 这样的例子将用等宽字体排版,所以这非常适合于源代码和类似的例子.
+
+   #+BEGIN_EXAMPLE
+   Some example from a text file. 
+   #+END_EXAMPLE
+
+   请注意,这些块可以缩进,以便与缩进文本很好地对齐,特别是使用简单列表结构(参见第2.7节[普通列表],第12页). 为了简单起见,使用小例子时,也可以用冒号后跟空格来启动示例行. 冒号之前还可能有额外的空格:
+
+   Here is an example
+      : Some example from a text file.
+
+   如果示例是来自编程语言的源代码,或者可以通过Emacs中的font-lock标记的任何其他文本,您可以要求示例看起来像是格式化的Emacs buffer[fn:MFRE1]缓冲区. 这是通过“src”块完成的,您还需要指定应用于示例[fn:MFRE2]的字体化的主要模式的名称,请参见第15.2节[简易模板],第223页,了解快捷键以轻松插入代码块.
+
+   #+BEGIN_SRC emacs-lisp
+    (defun org-xor (a b)
+       "Exclusive or."
+       (if a (not b) b)) 
+   #+END_SRC
+
+   在示例和src片段中,您可以将-n开关添加到BEGIN行的末尾,以获取示例的行编号. -n采用可选的数字参数,指定块的起始行号. 如果使用+ n开关,则前一编号代码片段的编号将在当前编号代码段中继续. + n也可以取数值参数. 参数的值将被添加到上一个块的最后一行以确定起始行号.
+
+   #+BEGIN_SRC emacs-lisp -n 20
+    ;; this will export with line number 20
+    (message "This is line 21") 
+   #+END_SRC
+   #+BEGIN_SRC emacs-lisp +n 10
+    ;; This will be listed as line 31 
+    (message "This is line 32")
+   #+END_SRC
+
+   在文字示例中,Org会将“(ref:name)”这样的字符串解释为标签,并将它们用作像[ [(name)] ](方括号之间没有空格)这样的特殊超链接的目标(即引用名称用单括号括起来). 在HTML中,将鼠标悬停在这样的链接上将远程 - 突出显示相应的代码行,这很酷.
+
+   您还可以添加-r开关,从源代码[fn:MFRE3]中删除标签. 使用-n开关,这些引用的链接将由代码列表中的行号标注,否则链接将使用没有括号的标签. 这是一个例子:
+
+   #+BEGIN_SRC emacs-lisp -n –r
+   (save-excursion              (ref:sc)
+      (goto-char (point-min)))   (ref:jump)
+   #+END_SRC
+   In line [[(sc)]] we remember the current position. [[(jump)][Line (jump)]] jumps to point-min.
+
+   最后,您可以使用-i来保留特定代码块的缩进(参见第14.2节“编辑源代码”,第196页).
+
+   如果标签格式的语法与语言语法冲突,请使用-l开关更改格式,例如'＃+ BEGIN_SRC pascal -n -r -l'((％s))“'. 另请参见变量org-coderef-label-format.
+
+   HTML导出还允许将示例作为文本区域发布(请参见第12.9.10节“HTML导出中的文本区域”,第152页).
+
+   因为＃+ BEGIN _...和＃+ END _...模式需要经常添加,所以使用Easy模板工具提供快捷方式(参见第15.2节[简易模板],第223页).
+
+   * C-c '
+
+     在其原始模式的点处编辑源代码示例. 这通过切换到具有源代码的临时缓冲区来实现. 您需要再次按C-c'退出[fn:MFRE4]. 编辑后的版本将替换Org缓冲区中的旧版本. 将使用artist-mode[fn:MFRE5]来编辑固定宽度区域(每行以冒号后跟空格),以便轻松创建ASCII绘图. 在空行中使用此命令将创建一个新的固定宽度区域.
+
+   * C-c l
+
+     在使用C-c'创建的临时缓冲区中编辑源代码示例时调用org-store-link将提示输入标签. 确保它在当前缓冲区中是唯一的,并在当前行末尾插入正确的格式,如“(ref:label)”. 然后将标签作为链接“(label)”存储,用C-c C-l进行检索.
+
+** 特殊符号
+
+   您可以使用类似LATEX的语法来插入特殊的符号命名实体,如“\alpha”来表示希腊字母,或者“\to”表示箭头. 这些符号的完成可用,只需键入“\”,也可能是几个字母,然后按M-TAB查看可能的完成. 如果你在一个单词中需要这样一个符号,用一个大括号来终止它. 例如
+
+   Protip: Given a circle \Gamma of diameter d, the length of its circumference is \pi{}d.
+
+   提供了大量的实体,其名称取自HTML和LATEX; 您可以使用命令org-entities-help从专用缓冲区舒适地浏览完整列表. 也可以在变量org-entities-user中提供自己的特殊符号.
+
+   在导出期间,这些符号被转换为导出器后端的本机格式. 像\alpha这样的字符串导出为＆alpha; 在HTML输出中,在LATEX输出中为\(\alpha\). 同样,在HTML和~LATEX内,\nbsp成为&nbsp.
+
+   实体也可以用作组织文档中的标记,例如'\under{}not underlined\under'导出为'_not underlined_'.
+
+   如果您希望看到以UTF-8字符显示的实体,请使用以下命令[fn:MFRE6]:
+
+   * C-c C-x \
+
+     将实体显示为UTF-8字符. 这不会改变保持纯ASCII的缓冲区内容,但它仅覆盖UTF-8字符,仅用于显示.
+
+   除了上面定义的常规实体外,Org以特殊方式[fn:MFRE7]导出以下常用字符组合:'\- '被视为一个羞耻的连字符(shy hyphen),'--'和'---'被转换成破折号, '...'成为一组紧凑的点.
+
+** 下标和上标
+
+   "^" 和"_" 用于表示超和下标. 为了增加ASCII文本的可读性, 不需要 —but OK—  用大括号来包围多字符子和上标. 但是,当涉及到不止一个字时,是强制性的.(it is not necessary—but OK—to surround multi-character sub- and superscripts with curly braces. Those are, however, mandatory, when more than one word is involved.) 例如
+
+   #+BEGIN_SRC org
+   The radius of the sun is R_sun = 6.96 x 10^8 m. On the other hand, the radius of Alpha Centauri is R_{Alpha Centauri} = 1.28 x R_{sun}.
+   #+END_SRC
+
+   如果你写一个文本,下划线常用在不同的上下文中,Org的惯例总是把它们解释为下标可以让你的方式. 配置变量org-use-sub-superscripts以更改此约定. 例如,当将此变量设置为{}时,'a_b'不会被解释为下标,而是'a_{b}'.
+
+   * C-c C-x \
+
+     除了将实体显示为UTF-8字符外,此命令还将以所见即所得的方式格式化子和上标.
+
+** 嵌入LATEX
+
+   普通ASCII通常对于几乎所有笔记都是足够的. 例外包括科学笔记,通常需要数学符号和偶尔的公式. LATEX[fn:MFRE8]广泛用于排版科学文档. org mode支持将LATEX代码嵌入到其文件中,因为许多学者用于编写和读取LATEX源代码,并且因为可以很容易地处理这些代码来为多个导出后端生成漂亮的输出.
+
+*** LATEX片段
+
+    org mode可以包含LATEX数学碎片,它支持多种导出后端处理这些数据的方法. 导出到LATEX时,代码保持原样. 当导出到HTML时,组织可以使用MathJax(参见第12.9.9节[HTML导出中的数学格式],第151页)或将数学转码为图像(请参见第11.8.2节[预览LATEX片段],第133页)
+
+    LATEX片段根本不需要任何特殊标记. 以下片段将被标识为LATEX源代码:
+
+    - 任何种类[fn:MFRE9]的环境. 唯一的要求是\begin语句出现在新行上,在行的开头或仅在空格之后.
+    - 通常的LATEX数学分隔符中的文本. 为了避免与货币规格冲突,单个'$'字符只能被识别为数学分隔符,如果所附文本最多包含两个换行符,则直接附加到'$'字符之间,而不是空格 '$'之后是空格或标点符号(括号和引号在这个上下文中被认为是标点符号). 对于其他分隔符,没有这样的限制,所以当有疑问时,使用'\(... \)'作为内联数学分隔符.
+
+    例如:
+    #+BEGIN_SRC latex
+    \begin{equation} x=\sqrt{b}
+    \end{equation}
+
+    If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
+    #+END_SRC
+
+    可以使用变量org-export-with-latex来配置LATEX处理. 默认设置为t,表示用于HTML的MathJax,不对ASCII和LATEX后端进行处理. 您还可以使用以下行之一在每个文件的基础上设置此变量:
+
+    #+OPTIONS: tex:t            自动做正确的事(MathJax)
+    #+OPTIONS: tex:nil          根本不处理LATEX片段
+    #+OPTIONS: tex:verbatim     逐字输出,适用于jsMath等
+
+*** 预览LATEX片段
+
+    如果您有一个可用的LATEX安装和dvipng,dvisvgm或转换已安装的[fn:MFRE10],LATEX片段可以被处理以产生用于在导出到HTML时包含的排版表达式的图像(参见第11.8.1节[LATEX片段] 第132页),或在org mode下进行内联预览.
+
+    您可以自定义变量org-format-latex-options和org-format-latex-header来影响预览的某些方面. 特别是:scale(和for HTML export,:html-scale)属性可以用来调整预览图像的大小.
+
+    * C-c C-x C-l
+
+      在点处生成LATEX片段的预览图像,并覆盖源代码. 如果点没有片段,则处理当前条目中的所有片段(两个标题之间). 当用前缀参数调用时,处理整个子树. 当使用两个前缀参数调用时,或者当光标位于第一个标题之前,请处理整个缓冲区.
+
+    * C-c C-c
+
+      删除叠加预览图像.
+
+    您可以打开文件中所有LATEX片段的预览
+
+    #+STARTUP: latexpreview
+
+    要禁用它,只需使用
+
+    #+STARTUP: nolatexpreview
+
+*** 使用CDLATEX输入数学公式
+
+    CDLATEX模式是一种次要模式,通常与主要的LATEX模式(如AUCTEX)组合使用,以加速环境和数学模板的插入. 在org mode下,您可以利用CDLATEX模式的一些功能. 您需要从http://www.astro.uva.nl/~dominik/Tools/cdlatex安装cdlatex.el和texmathp.el(后者也是AUCTEX). 不要在Org mode下使用CDLATEX模式,而是使用作为Org模式一部分的light version org-cdlatex-mode. 使用M-x org-cdlatex-mode RET打开当前缓冲区,或将所有组织文件打开
+
+    #+BEGIN_SRC elisp
+        (add-hook 'org-mode-hook 'turn-on-org-cdlatex)
+    #+END_SRC
+
+    启用此模式时,将显示以下功能(有关详细信息,请参阅CDLATEX模式的文档):
+    - 环境模板可以插入C-c {.                             } (右大括号没有实际意义是为了为了满足括号自动匹配特意加的)
+    - 如果光标位于LATEX片段中[fn:MFRE11],TAB键将执行模板扩展. 例如,TAB会将fr扩展为\frac {} {},并将光标正确放置在第一个括号内. 另一个TAB会让你进入第二个大括号. 即使是外部片段,TAB将在一行开始时扩展环境缩写. 例如,如果在行的开始处写“equ”,然后按TAB,则该缩写将被扩展为等式环境. 要获取所有缩写的列表,请键入M-x cdlatex-command-help <RET>.
+    - 按LATEX片段中的"_"和"^" 将这些字符与一对大括号一起插入. 如果您使用TAB移出大括号,并且如果大括号仅包含单个字符或宏,则会再次删除它们(取决于变量cdlatex-simplified-sub-super-scripts).
+    - 按下重音符号"`",后跟一个字符插入数学宏,也在LATEX片段之外. 如果您在严重口音后等待1.5秒以上,将会弹出一个帮助窗口.
+    - 按撇号"'"后跟另一个字符修改点之前的符号使用口音或字体. 如果您在撇号后等待1.5秒以上,将会弹出一个帮助窗口. 字符修改只能在LATEX片段内部工作; 外面的引用是正常的.
+
+* Footnotes
+
+[fn:Agenda1] 
+
+[fn:Agenda2] 
+
+[fn:Agenda3] 
+
+[fn:Agenda4] 
+
+[fn:Agenda5] 
+
+[fn:Agenda6] 
+
+[fn:Agenda7] 
+
+[fn:Agenda8] 
+
+[fn:Agenda9] 
+
+[fn:Agenda10] 
+
+[fn:Agenda11] 
+
+[fn:Agenda12] 
+
+[fn:Agenda13] 
+
+[fn:Agenda14] 
+
+[fn:Agenda15] 
+
+[fn:Agenda16] 
+
+[fn:Agenda17] 
+
+[fn:Agenda18] 
+
+[fn:MFRE1]
+
+[fn:MFRE2]
+
+[fn:MFRE3]
+
+[fn:MFRE4]
+
+[fn:MFRE5]
+
+[fn:MFRE6]
+
+[fn:MFRE7]
+
+[fn:MFRE8]
+
+[fn:MFRE9]
+
+[fn:MFRE10]
+
+[fn:MFRE11]
+

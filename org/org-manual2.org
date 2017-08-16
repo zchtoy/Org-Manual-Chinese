@@ -1,0 +1,843 @@
+* 表格
+  Org自带一个快速而且直观的表格编辑器. 借助Emacs的'calc'包(参考<Gnu Emacs calculator manual>)甚至可以具备类似电子表格的计算能力.
+** 内置的表格编辑器
+   Org可以很容易的使用纯文本来格式化表格. 任何以'|'为非空白字符开头的行都被认为是表格的一部分. '|'也是列的分隔符[fn:表格1].一个表格看起来类似于这样:
+   #+BEGIN_SRC org
+     | Name  | Phone | Age |
+     |-------+-------+-----|
+     | Peter |  1234 |  17 |
+     | Anna  |  4321 |  25 |     
+   #+END_SRC
+   
+   每次在表格内按<TAB>,<RET>或'C-c C-c'都会自动对表格进行重排. <TAB>也使光标移动到下一个字段(<RET>使光标移动到下一行)并且会在表格的最后一行或者在水平线之前的位置上添加一行新行.表格的缩进是由第一行来决定的. 任何以'|-'开头的行都被认为是水平分割行,并且在下一次表格重排时会扩展到整个表格的长度. 所有要创建上面的表格,你只需要输入
+   #+BEGIN_SRC org
+     |Name|Phone|Age|
+     |-    
+   #+END_SRC
+   然后按下<TAB>来对齐表格并且开始在表格字段内进行填充操作. 更快的操作是输入|Name|Phone|Age然后紧接着输入'C-c <RET>'.
+
+   当在表格字段内输入文本时,Org以一种特殊的方法来处理<DEL>,<Backspace>,和所有的字符键,这种方法保证了插入和删除操作可以避免对其他字段产生影响. 另外,如果是在光标通过<TAB>,S-<TAB>或<RET>的方式移动到新表格字段后立即输入,那么新表格字段中的文本会被自动清空. 如果这种行为对你产生了困扰,可以配置变量'org-enable-table-editor'和'org-table-auto-blank-field'来取消这种行为.
+
+   * 创建和转换命令
+     * C-c | (org-table-create-or-convert-from-region) ::
+          转换选定域为表格. 如果每个行都包含了至少一个TAB键,那么该函数假设选定域的值是以tab键作为分隔符的. 如果每一行都包含了一个逗号,那么选中域被假设为是CSV文件内容. 如果即没有TAB,也没有逗号,那么就认为选中域是以空格为分隔符的. 你可以使用前置参数来告诉函数使用哪种分隔符:C-u使用CSV格式,C-u C-u使用TAB为分隔符,C-u C-u C-u允许输入正则表达式匹配分隔符,同时前置参数N标示至少N个连续的空格或TAB键作为分隔符.如果没有选定域,这个命令会创建一个空的Org表格. 至少它比输入"|Name|Phone|Age<REt>|-<TAB>"这样来的简单.
+   * 重对齐和表格字段之间的移动
+     * C-c C-c (org-table-align) ::
+          对表格进行重对齐操作但不移动光标的位置
+     * C-c SPC (org-table-blank-field)::
+          清空单元格 
+     * <TAB> (org-table-next-field) :: 
+	  重对齐操作,光标移动到下一个字段中. 如果需要的话创建一个新行.
+     * S-<TAB> (org-table-previous-field) :: 
+	  重对齐操作,光标移动到上一个字段中.
+     * <RET> (org-table-next-row) :: 
+	  重对齐表格,并且光标移到下一行. 如果需要的话会新键一行. 若光标在一行的开头或末尾,<ERT>也会新建一行,因此该功能可以用来分割表格.
+     * M-a (org-table-beginning-of-field) :: 
+	  移动到光标当前字段的开头位置,或者(若已经在当前字段的开头位置)上一个字段的开头位置
+     * M-e (org-table-end-of-field) :: 
+	  移动到光标当前字段的结尾位置,或者(若已经在当前字段的结尾位置)下一个字段的结尾位置
+   * 列和行的编辑
+     * M-<left> (org-table-move-column-left) ::
+          移动当前列到左方(与左列交换位置)
+     * M-<right> (org-table-move-column-right) ::
+          移动当前列到右方(与右列交换位置)
+     * M-S-left (org-table-delete-column) :: 
+          删除当前列
+     * M-S-right (org-table-insert-column) :: 
+          在当前光标左侧插入一列
+     * M-<up> (org-table-move-row-up) :: 
+	  移动当前行到上方(与上行交换位置)
+     * M-<down> (org-table-move-row-down) :: 
+	  移动当前行到下方(与下行交换位置)
+     * M-S-<up> (org-table-kill-row) :: 
+	  删除当前行或水平分隔行
+     * M-S-<down> (org-table-insert-row) :: 
+	  在当前行上面插入一新行. 如果加上前置参数,就在当前行下方插入新行.
+     * C-c - (org-table-insert-hline) :: 
+	  在当前行下面插入一新水平分隔行. 如果加上前置参数,就在当前行上方插入新水平分隔行.
+     * C-c <RET> (org-table-hline-and-move) :: 
+	  在当前行下方插入一水平分隔行,并且移动光标到该分隔行的下一行
+     * C-c ^ (org-table-sort-lines) :: 
+	  对当前块的表格行进行重新排序. 光标的位置指明根据哪一列来排序, 排序的范围就是上下两个最近的水平分隔行之间所包含的行,或者是整个表格. 如果光标处于第一列的前面,你会被提示需要输入按照哪一列来进行排序. 如果存在一个被选定的块,那么文本块的标记位置就指定了要排序的起始行,并且根据标记所在的列来进行排序,而光标所在的列(包括该列)为要排序的结束行. 该命令会提示您输入排序的类型(按字母排序,按数字排序或这按时间排序). 当该命令带有前置参数的时候,按字母排序是大小写敏感的.
+   * 区域
+     * C-c C-x M-w (org-table-copy-region) ::
+          从表格中拷贝一个矩形区域到粘贴板. 光标所在的位置和标记的位置决定了矩阵的边界. 如果没有选定的区域,就把整个当前字段拷贝到粘贴板中. 该操作会忽略水平分隔行.
+
+     * C-c C-x C-w (org-table-cut-region) :: 
+	  拷贝表格中的矩形区域的内容到剪贴板,并且对该矩形其余进行填空操作.因此这其实是个剪切操作
+
+     * C-c C-x C-y (org-table-paste-rectangle) :: 
+	  粘贴矩形区域内容到表格中. 该区域的左上角放置在当前字段. 所有涉及到的字段都会被覆盖掉. 如果矩阵不能合适地放到当前表格中,那么当前表会根据需要扩大. 该操作会忽略水平分隔行的存在.
+
+     * M-<RET> (org-table-wrap-region) :: 
+	  以光标位置为界限分割当前字段,并且把剩下的部分移动到下一行. 如果存在已选定的文本块,并且光标和标记处于同一个列中,the text in the column is wrapped to minimum width for the given number of lines. 如果存在一个数字的前置参数,那么该参数会用来指定操作的行数. 如果没有选定的区域,而你又指定了前置参数,当前字段会被清空,并且原先的内容会粘贴在当前字段的上个字段的内容后面.
+   * 计算
+     * C-c + (org-table-sum) ::
+          把当前列(或选定区域)的数字求总和.求和的结果会在echo区域显示,并且可以用C-y命令插入结果
+
+     * S-<RET> (org-table-copy-down) ::
+          若当前字段是空的,就会拷贝上方的第一个非空字段的值. 如果当前字段不是空的,则拷贝当前字段的值覆盖下一行的值,并且鼠标也跟着下移. 根据变量'org-table-copy-increment'的设置,若字段中的值是整数,则拷贝时会自增. 若字段中的整数值太过巨大了,则该值不会被增加. 另外,若前置参数为0,则会暂时地禁止这种增加行为. 该键序列在shift-selection和相关模式中也有定义,因此可能会有冲突(参考[#Packages that lead to conflicts with org mode][与org-mode冲突的包])
+   * 杂项
+     * C-c ` (org-table-edit-field) ::
+          在另一个窗口中编辑当前字段. 这在编辑显示不下内容的字段时非常有用(参考[[列的宽度与对齐][列的宽度与对齐]]). 当添加了C-u前缀时,仅仅只是把当前字段的内容全部显示出来,这样就能在本地编辑该字段了. 如果加了两个C-u前缀则会保持一个编辑窗口,该窗口的内容随着光标的所在字段不同而动态改变. 这种模式会一直持续到光标离开表格,或者你重复输入该命令'C-u C-u C-c `'
+
+     * M-x org-table-import  RET :: 
+	  把一个文件当作表格导入进来. 文件内容必须是以TAB或空格分隔的(通常从电子表格或数据库中导出的数据是可以定义为以TAB分隔的文本文件的). 该命令先插入文件内容到缓冲区内然后调用转换命令(org-table-create-or-convert-from-region)将内容为一个表格. 任何前缀参数都会被传递给转换命令作为决定分隔符的参数.
+
+     * C-c | (org-table-create-or-convert-from-region) :: 
+	  也可以通过粘贴以tab分隔的文本到Org缓冲区的方式来导入表格.方法是,先用C-x C-x选择(也可以用其他方法)要粘贴的文本,然后使用'C-c |'命令
+
+     * M-x org-table-export RET :: 
+	  导出表格,默认是以TAB作为分隔符. 常常用来与电子表格或数据库程序作数据交换. 导出文件的格式可以在变量'org-table-export-default-format'中配置. 你也可以在子树中用属性'TABLE_EXPORT_FILE'来定义导出文件的名字和属性'TABLE_EXPORt_FORMAT'来定义导出文件的格式. Org支持将表格导出为许多格式. 导出的格式与Orgtbl radio表格的格式是一样的. 详细描述请参考'[#Translator functions][转换功能]'.
+
+     如果你不喜欢Org的表格功能(因为你可能象要有记录一些以|开头的行,而不作为表格),你可以用下面的配置语句关掉该功能
+     #+BEGIN_SRC emacs-lisp
+     (setq org-enable-table-editor nil)
+     #+END_SRC
+     这样一来,唯一可用的表格命令就是C-c C-c,该命令用来作人工的重对齐.
+** 列的宽度与对齐
+   列的宽度是有表格编辑器自动决定的. 列的对齐方式也是由列中的值的类型来自动决定的,若值类似于数字则默认右对齐,否则默认为左对齐.
+
+   有时候,一个或多个字段会由于包含了太多的文本而导致列的宽度看起来很不方便. 又或者你想象让多个列不管内容多少都保持固定的宽度. 要设置列的宽度, 在列的任何一个字段中包含类似'<N>'这样的字符串即可. 这里N的意思代表了该列的宽度限定为N个字符长度. 下一次重排时,该列的宽度会调整为这个值.例如
+   #+BEGIN_SRC org
+     |---+------------------------------|               |---+--------|
+     |   |                              |               |   | <6>    |
+     | 1 | one                          |               | 1 | one    |
+     | 2 | two                          |     ----\     | 2 | two    |
+     | 3 | This is a long chunk of text |     ----/     | 3 | This=> |
+     | 4 | four                         |               | 4 | four   |
+     |---+------------------------------|               |---+--------|
+   #+END_SRC
+
+   太长的字段会被裁减并且以字符串'=>'结尾. 注意,此时完成的字符串还保留在缓冲区内,只不过被隐藏起来罢了. 要查看完整的文本,只需要把鼠标移到要查看的字段上过一会儿,会有一个小提示窗口弹出来,里面有完整的内容. 要编辑这个字段,使用命令C-c `(C-c 接着反引号). 该编辑命令会打开一个新窗口给你编辑,里面是完整的内容.输入C-c C-c完成编辑
+
+   打开一个文件时,若文件中存在缩小的列的表格,此时列中的文本不会自动进行隐藏动作.这时候的表格看起来不太好看,需要重排. 设置选项'org-startup-align-all-tables'会使org在打开文件时自动重排其中的所有表格,当然这个动作也会降低org启动的速度. 你也可以在每个文件中设置这个属性,方法为:
+   #+BEGIN_SRC org
+     #+STARTUP: align
+     #+STARTUP: noalign
+   #+END_SRC
+
+   默认清空下富含数字的列是右对齐的,富含字符串的列是左对齐的,但你也可以自定义列的对齐方式,方法为在列中使用类似'<r>','c'[fn:表格2],或'<l>'这样的字符串来定义该列的对齐方式. 当然你也可以同时定义列对齐方式和列的宽度,例如'<r10>'.
+
+   当导出文档时,只包含指定格式的字符串的行会自动移除不被导出.
+** 对列进行分组
+   当Org导出表格时,默认是不导出表格中的竖线的,因为通常来说这不美观. 然而有时候竖线可用用来把表格划分为几个列的组(类似于水平分隔行把行划分为几个组别). 要定义列的组别,你可以使用一种特殊的行,在这一行里,第一个字段只包含'/'. 接下来的字段中可用包含'<'(表格这一列是一个组别的起始列),或者'>'(指示这一列是组别的结束列),或者'<>'('<'和'>'中间没有空格,这表示这一列自成一组). 组别之间的边界在导出时会用竖线标示出来.如下例子所示
+   #+BEGIN_SRC org
+     | N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+     |---+-----+-----+-----+---------+------------|
+     | / |   < |     |   > |       < |          > |
+     | 1 |   1 |   1 |   1 |       1 |          1 |
+     | 2 |   4 |   8 |  16 |  1.4142 |     1.1892 |
+     | 3 |   9 |  27 |  81 |  1.7321 |     1.3161 |
+     |---+-----+-----+-----+---------+------------|
+     #+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
+   #+END_SRC
+   
+   你也可以只是在想要竖线的地方插入列组的起始符号即可.例如
+   #+BEGIN_SRC org
+     |  N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+     |----+-----+-----+-----+---------+------------|
+     | /  | <   |     |     | <       |            |
+   #+END_SRC
+** Orgtbl的minor mode
+   如果你喜欢Org表格编辑器的直观操作，你也可以在别的mode(例如text-mode或mail-mode)中使用它. 名为'Orgtbl-mode'的minor mode可以实现这一点. 你可以通过'M-x orgtbl-mode'来切换该模式. 如果你想在进入特定mode(例如Message mode)时自动进入该minor mode,使用如下的配置语句
+   #+BEGIN_SRC emacs-lisp
+     (add-hook 'message-mode-hook 'turn-on-orgtbl)
+   #+end_src
+
+   此外,通过一些配置,还可以用Orgtbl-mode实现在任意标签内包含表格. 例如,它可以实现在构建LaTeX表格时兼顾LaTeX的易用和Orgtbl-mode的能力(包含了电子表格的能力). 详细请见[#Tables and lists in arbitrary syntax][任意标签中的表格和列表]
+** 电子表格
+   表格编辑器使用Emacs的'calc'包来实现类似电子表格的功能. 它也可以根据Emacs Lisp表达式来根据其他字段中的值计算得出当前字段的值. 虽然功能上类似,但是严格来说,Org的实现方式与其他电子表格的实现方式是不一样的. 例如, Org能够理解column formula(列公式)的概念，列公式会自动应用到当前列的每一个非最开头的字段中，而不用在每一个字段中都复制一份公式(formula). Org还提供了一个formula调试器和一个formula编辑器, 该formula编辑器会高亮公式中所引用到的字段,并且可以通过方向键来移动该引用.
+*** 引用
+    要根据其他字段的值来计算表格中的值,公式必须引用到其他字段或区间. 字段可用通过名称,通过绝对坐标和相对坐标用这三种方式来引用. 要确定某个字段的坐标是什么,在这个字段中按下'C-c ?'就会在echo区字段显示出该字段的坐标,也可以按下"C-c }"来切换显示坐标网格.
+
+    * 字段引用
+
+      在公式中有两种方法来引用其他字段中的值. 第一种类似于其他电子表格,你可以用一个字母/数字组合起来表示一个字段的引用,例如'B3'的意思是第3行的第2个字段. 然而,Org更推荐[fn:表格3]使用另一种更加通用的表示方法,这种表示方法看起来是这样的:
+      #+BEGIN_SRC org
+         @row$column      
+      #+END_SRC
+
+      列的可以用绝对坐标表示,类似于这样:$1,$2...$N.也可以用相对坐标表示(当前列为基准值)类似于这样:$+1,$-2,$<,$>.其中$<固定表示第一列,$>固定表示最后一列. 另外,你可以用$>>>表示从右往左数第3列
+
+      行在计算坐标时,值计算数据行,而 *不算水平分隔行(hline)* .类似于列的表示方法,你可以使用绝对行数来表示,类似于@1,@2...@N,也可以用相对行数来表示,类似于@+3,@-1,@<和@>. 其中@<固定表示表格中的第一行,@>固定表示表格中的最后一行[fn:表格4].另外你也可用通过与hline的相对位置来引用行:@I引用第一个hline,@II引用第二个hline,一次类推. @-I引用的是当前行的上一个hline,@+I是当前行的下一个hline. 你也可以通过@III+2表示第3个hline的后2行
+
+      $0和$0分别引用的是当前行和当前列,也就是要被计算的字段的行和列. 另外,如果你忽略了引用的行或列部分,默认情况下使用当前字段的行或列代替.
+
+      Org中不带符号只含数字的引用是固定引用,也就是说如果你在两个不同的字段中使用同一个引用表示法,引用的是同一个字段. 而org中带符号和数字的引用是浮动引用,即相同的引用表示法可能引用的是不同的字段,这取决于公式所在的那个字段的位置.
+
+      下面是一些例子:
+      #+BEGIN_SRC org
+              
+        @2$3      2nd row, 3rd column (same as C2)
+        $5        column 5 in the current row (same as E&)
+        @2        current column, row 2
+        @-1$-3    the field one row up, three columns to the left
+        @-I$2     field just under hline above current row, column 2
+        @>$5      field in the last row, in column 5
+        
+      #+END_SRC
+
+    * 区间引用
+      
+      你可以引用一个矩形区间,方法是指明两个字段引用,并用'..'连接起来. 如果这两个字段都处于同一个行,可用只使用'$2..$7'这样来代替, 但若至少有一个字段处于不同的行,那么你需要对至少第一个字段使用完整的@row$column格式(即引用必须以@开头,以便能够正确第解释).例如
+      #+BEGIN_SRC org
+              
+        $1..$3        first three fields in the current row
+        $P..$Q        range, using column names (see under Advanced)
+        $<<<..$>>     start in third column, continue to the one but last
+        @2$1..@4$3    6 fields between these two fields (same as A2..C4)
+        @-1$-2..@-1   3 numbers from the column to the left, 2 up to current row
+        @I..II        between first and second hline, short for @I..@II
+        
+      #+END_SRC
+
+      区间引用返回一个值的vector(向量),并传入Calc向量函数中执行. 区间中的空字段是禁止的,这样向量中就只包含了非字段(要切换这种模式,参考下面的'E','N'模式[[Calc的公式语法][Calc的公式语法]]).
+
+    * 公式中的字段坐标
+
+      若要在Calc公式使用当前字段的行号和列号,可用用@#和$#来表示. 在传统的Lisp公式中等价于'org-table-current-dline'和'org-table-current-column'.例如:
+      #+BEGIN_SRC org
+      if(@# % 2, $#, string(""))
+            Insert column number on odd rows, set field to empty on even rows.
+      $2 = '(identity remote(FOO, @@#$1))
+            Copy text or values of each row of column 1 of the table named FOO into column
+            2 of the current table.
+      @3 = 2 * remote(FOO, @1$$#)
+            Insert the doubled value of each column of row 1 of the table named FOO into
+            row 3 of the current table.
+      #+END_SRC
+
+      对于第二个例子,FOO表格至少需要有与当前表格一样多的行. 注意:这对于大量的行操作来说是效率非常低的[fn:表格5].
+
+    * 命名引用
+
+      '$name'会被被解释成列名，参数或者常量. 可以通过变量'org-table-formula-constants'来定义全局常量,或者通过类似下面一行的方法来为某个文件定义本地常量.
+      #+BEGIN_SRC org
+        #+CONSTANTS: c=299792458. pi=3.14 eps=2.4e-6
+      #+END_SRC
+      
+      另外,在表格公式中,也可以使用属性(参考章节[[属性和列][属性和列]])来作为常量使用[fn:表格6]:你可以通过名为'$PROP_ Xyz'的常量来访问属性':Xyz:',Org会在表格所在大纲条目及其上级条目中搜索该属性. 如果你加载了'constants.el'这个包,那么Org也会使用这个包来匹配常量,这个包甚至包括自然常量(例如$h表示普朗克常量)和单位(例如$km表示千米). 列名和参数可以在一个特殊的表格行内指定,更具体描述以后再说,可以参考[[高级特性][高级特性]].现阶段所有的名字都必须以字母开头,以后可能可以以字母和数字开头.
+
+    * 远程引用
+
+      你也可以引用其他表格中的常量,字段和区间, 这些表格可以在同一个文件也可以在不同文件中. 引用的方法为
+      #+BEGIN_SRC org
+        remote(NAME-OR-ID,REF)
+      #+END_SRC
+      这里NAME可以是当前文件中当前表格以前所定义的表格名字. 这里表格名字可以用'#+TBLANAME:表格名字'来定义. NAME的值也可以是某个大纲条目的ID(甚至可以是其他文件中的大纲条目),这时引用的就是该条目中的第一个表格. REF是一个绝对字段或绝对区间的引用(具体方法如上面所示,例如@3$3或者$somename,这些绝对引用需要确保在被引用表格中都是可用的).
+
+      间接的NAME-OR-ID:当NAME-OR-ID的格式为@ROW$COLUMN时,它将替代当前表格的相应字段的名字或ID.例如:remote($1, @>$2) => remote(year_2013, @>$1).不支持B3这种格式,因为它不能与简单表格的名字或ID进行区别.
+
+
+*** Calc的公式语法
+    一个公式可用是任何能够被Emacs的'calc'包所识别的代数表达式. *注意,在'Calc'中,'/'的操作符优先级要比'*'低,因此'a/b*c'会被解释为'a/(b*c)',这一点与标准不符*. 在calc-eval(参考GNUEmacs Calc　Manual中'Calling Calc from Your Lisp Programs'章节的)进行计算之前,变量替换会以之前所描述的方式发生. 公式之中的区域变量可用直接放入Calc的向量函数(例如'vmean'和'vsum')中作为参数使用.
+
+    公式可用在分号之后附加上可选的选项模式字符串. 这种选项模式字符串由标志所组成,这些标志会在公式被执行时影响Calc和其他模式. 默认情况下,Org使用标准的Calc模式(精度为12位,角度单位为度,分数和symbolic模式为关闭状态). 然而,公式在显示时,会自动调整为(float 8)以便保持表格的紧凑. 可用通过变量'org-calc-default-modes'来配置这些默认设置
+
+
+    p20        Set the internal Calc calculation precision to 20 digits.
+    n3, s3, e2, f4
+               Normal, scientific, engineering or fixed format of the result of Calc passed back to Org. Calc formatting is unlimited in precision as long as the Calc calculation precision is greater. 
+    D, R       Degree and radian angle modes of Calc.
+    F, S       Fraction and symbolic modes of Calc.
+    T, t       Duration computations in Calc or Lisp, see [[时长和时间的值][时长和时间的值]].
+    E          If and how to consider empty fields. Without ‘E’ empty fields in range references
+               are suppressed so that the Calc vector or Lisp list contains only the non-empty
+               fields. With ‘E’ the empty fields are kept. For empty fields in ranges or empty
+               field references the value ‘nan’ (not a number) is used in Calc formulas and
+               the empty string is used for Lisp formulas. Add ‘N’ to use 0 instead for both
+               formula types. For the value of a field the mode ‘N’ has higher precedence than ‘E’.
+    N          Interpret all fields as numbers, use 0 for non-numbers. See the next section to
+               see how this is essential for computations with Lisp formulas. In Calc formulas
+               it is used only occasionally because there number strings are already interpreted
+               as numbers without ‘N’.
+    L          Literal, for Lisp formulas only. See the next section.
+
+    除非你使用大整数或高精度计算式,并且需要显示浮点式数字,你可以提供一个printf格式说明字符串[fn:表格7]来对Calc计算并传回Org的结果进行重新格式化,而不是Calc自己作这种格式化. 下面是一些例子
+
+    #+begin_example
+      $1+$2             Sum of first and second field
+      $1+$2;%.2f        Same, format result to two decimals
+      exp($2)+exp($1)   Math functions can be used
+      $0;%.1f           Reformat current cell to 1 decimal
+      ($3-32)*5/9       Degrees F -> C conversion
+      $c/$1/$cm         Hz -> cm conversion, using constants.el
+      tan($1);Dp3s1     Compute in degrees, precision 3, display SCI 1
+      sin($1);Dp3%.1e   Same, but use printf specifier for display
+      taylor($3,x=7,2)  Taylor series of $3, at x=7, second degree
+    #+end_example
+
+    Calc还包含了一个完整的逻辑操作集合(请参考GNU Emacs Calc Manual的Logical Operations章节). 例如
+
+    #+begin_example    
+      if($1<20,teen,string(""))            如果第一列(age列)比20小,则返回值"teen",否则返回空值
+      if("$1" == "nan" || "$2" == "nan", string(""), $1 + $2); E f-1
+        Sum of the first two columns. When at least one of the input fields is empty
+        the Org table result field is set to empty. ‘E’ is required to not convert empty
+        fields to 0. ‘f-1’ is an optional Calc format string similar to ‘%.1f’ but leaves
+        empty results empty.
+      if(typeof(vmean($1..$7)) == 12, string(""), vmean($1..$7); E
+        Mean value of a range unless there is any empty field. Every field in the range
+        that is empty is replaced by ‘nan’ which lets ‘vmean’ result in ‘nan’. Then
+        ‘typeof == 12’ detects the ‘nan’ from ‘vmean’ and the Org table result field is
+        set to empty. Use this when the sample set is expected to never have missing
+        values.
+      if("$1..$7" == "[]", string(""), vmean($1..$7))
+        Mean value of a range with empty fields skipped. Every field in the range that
+        is empty is skipped. When all fields in the range are empty the mean value is
+        not defined and the Org table result field is set to empty. Use this when the
+        sample set can have a variable size.
+      vmean($1..$7); EN
+        To complete the example before: Mean value of a range with empty fields
+        counting as samples with value 0. Use this only when incomplete sample sets
+        should be padded with 0 to the full size.
+    #+end_example
+    
+    你可以增加你自己在Emacs Lisp里使用defmath定义的Calc函数,并且用于Calc公式语法.
+*** Emacs Lisp写成的公式
+    你可以使用Emacs Lisp来写公式;这在当Calc提供的函数不足与实现我们期望的操纵字符串和控制结构的功能时非常有用. 如果一个公式是以单引号后跟一个开括号开头的,则该公式被认为是Lisp形式的. 该Lisp的运算结果应该是返回一个字符串或者是数字的. 就像使用'calc'公式一样,你可以在分号';'后面指定模式和printf格式. 使用Emacs Lisp形式,你需要关注字段引用插入到form中的方式. 默认情况下,一个引用是将字段中的值以字符串的形式(包括在双引号内)插入的. 如果开启了N模式,则所有的被引用元素都会被转化为数字(非数字字段转化为0)并且在插入时作为Lisp数字型插入(不包含引号). 如果你提供了'L'标志,所有的字段将会以字面上的方式(不包含引号)插入公式中. 也就是说,如果你想一个引用作为字符串来插入到Lisp形式的公式中,则使用双引号来包含引用表达式(例如"$3")即可. 区域在插入时会作为一系列以空格分隔的字段,这样你就可以把它们潜入list或vector符号中. 下面是一些例子--注意我们在用Lisp计算时是如何使用'N'模式的
+    #+begin_example
+      Swap the first two characters of the content of column 1
+        '(concat (substring $1 1 2) (substring $1 0 1) (substring $1 2))
+      Add columns 1 and 2, equivalent to Calc's $1+$2
+        '(+ $1 $2);N
+      Compute the sum of columns 1-4, like Calc's vsum($1..$4)
+        '(apply '+ '($1..$4));N
+    #+end_example
+*** 时长和时间的值
+    如果你希望计算的是时间的值,你需要在Calc公式或Elisp公式中使用T标志
+    #+BEGIN_SRC org
+        |  Task 1 |   Task 2 |    Total |
+        |---------+----------+----------|
+        |    2:12 |     1:47 | 03:59:00 |
+        | 3:02:20 | -2:07:00 |     0.92 |
+        #+TBLFM: @2$3=$1+$2;T::@3$3=$1+$2;t
+    #+END_SRC
+    输入的时长值必须是以[HH:MM[:SS]]的形式的,这里秒数是可选的. 当使用了T标志,计算出来的时长会以HH:MM:SS的形式来显示(参考上面例子的第一个公式). 当使用t标志时,计算出来的时长的显示方式是根据变量'org-table-duration-custom-format'的不同而不同的, 该变量默认单位为小时并且会以小数的形式来显示结果(参考上面的第二个公式).
+
+    Org也支持副的时长,而且数字在作加减法时会被认为是秒数.
+*** 字段公式和区间公式
+    要给一个字段分配公式,直接输入公式,并在前面加上':=',例如':vsum(@II..III)'. 当你在 *光标还在字段中时* 按下<TAB>或<RET>或C-c C-c,公式就会被保持在该字段中,并且会自动计算并把计算结果展示为字段的值.
+
+    公式是统一存储在一个特殊行中的,该行是以"#+TBLFM:"开头的,并且直接就在表格的下方紧靠表格. 如果你在第3行的第4个字段中输入公式,那么该公式就会类似于'@3$4=$1+$2'这样. 当使用命令插入/删除/交换了行或者列时,公式中的绝对引用(但是不包括相对引用)也会跟着改变,以保证引用还是指向与修改前同一字段. 要避免这种情况发生(特别是在公式中使用了区间引用,表格的边界引用(使用@<,@>,$<,$>)或hlines引用(使用@I符号)的情况下), 你需要使用一般的编辑命令来改变表格结构.当使用一般的编辑命令来修改表结构的情况下,字段引用的这种自动适配功能当然是不会发生的--这样的话,你需要自己修正公式.
+
+    除了直接在字段中输入公式,你也可以使用下面这些命令
+    * C-u C-c = (org-table-eval-formula) ::
+         为当前字段分配一个新的公式. 该命令提示你输入公式(默认值为从#+TBLFM:行中获得公式),然后应用该公式到当前字段并保持起来.
+
+         在公式的左侧也可以是特别的表达式,以这种方法可用为一系列不同的字段分配公式. 并没有快捷方式来输入这种区间公式. 要增加这种区间公式,需要使用公式编辑器(参考[[编辑和调试公式][编辑和调试公式]])或者直接编辑$+TBLFM:行
+
+    * $N= (这里N表示第几列) ::  
+	     列公式,对整个列生效. 这种公式如此常见以至于Org以一种特殊的方式来处理这些公式,参考[[列公式][列公式]]
+
+    * @N= (这里N表示第几行) :: 
+	     行公式,对一行的所有字段生效. @>=表示最后一行.
+
+    * @1$2..@4$3= :: 
+		    区间公式,对所指定的矩阵区间内的所有字段有效. 这可以用来分配公式给行中的一些字段(但不是所有的字段)
+
+    * $name= :: 
+		命名字段,具体参考[[高级特性][高级特性]]
+*** 列公式
+    当你分配一个列公式到一个列时(使用类似$3=这样的语法),该列的所有字段都会使用同一个公式,然而也会有一些例外:(i) 如果表格包含了水平分隔行hlines,任何在第一个水平分隔行之前的行都被认为是表头信息,因此就不会被列公式所改变. (ii) 如果一个字段已经定义了字段公式或区间公式,那么它也被列公式排除在外(即字段公式和列公式的优先级高于列公式). 上诉的两个条件使得列公式很容易使用.
+
+    要分配一个公式给某个列,直接输入公式到该列的任何一个字段中,并在前面加一个等号,就像这样 “=$1+$2”. 当你的光标在字段里时按下<TAB>或<RET>或C-c C-c, 输入的公式就会作为该列的列公式而存储起来,然后经过计算,把结果在当前字段(而不是当前列)中展示出来. 如果列中的某个字段只包含'=',那么该列中前一个存储起来的公式会被应用到该字段中. 对于每个列来说,Org只会记住最近使用的那个公式. 在'#+TBLFM:'行,列公式看起来类似于'$4=$1+$2'这样. 列公式的左边不能是列的名字,它必须是数字形式的列引用或$>
+
+    除了输入以=开头的公式到字段中,你也可以使用下面的命令来创建列公式
+    * C－c = (org-table-eval-formula) ::
+         为该列应用一个新的列公式,然后使用该公式的计算结果显示在当前字段中. 该命令会提示你输入列公式,默认值为#+TBLFM行的公式. 输入的列公式会应用到当前字段中并存储起来. 如果加上一个数字前缀(例如C-5 C-c =),该命令会应用到当前列中的连续字段
+*** 查找功能
+    Org有三种预设的表格内查找功能
+    #+begin_example
+    (org-lookup-first VAL S-LIST R-LIST &optional PREDICATE)
+        根据(PREDICATE VAL S)条件在S-LIST列表内查找第一个元素S,如果条件为t,将查找到的位置值存储到R-LIST列表内.默认的判断条件是'='.注意,传递给PREDICATE的参数VAL和S按着调用org-lookup-first的顺序进行传递.VAL在S-LIST前面,如果R-LIST为nil时,将返回在S-LIST内匹配的元素S.
+    (org-lookup-last VAL S-LIST R-LIST &optional PREDICATE)
+    与下面的org-lookup-first类似,但是查找最后一个符合PREDICATE条件的元素.
+    (org-lookup-all VAL S-LIST R-LIST &optional PREDICATE)
+    与org-lookup-first类似,但是查找所有符合PREDICATE条件的元素,同时返回所有相应的值.在公式里这个功能不能用于它自己,因为它将返回一个系列值.然而此函数如果和其它的Emacs Lisp函数相结合,查找功能会非常强大.
+    #+end_example
+    如果使用此功能的区间包含空字段,通常将功能指定为E模式.否则空字段不会包含在S-LIST 和/或R-LIST,例如将会产生一个从S-LIST到R-LIST错误映射.
+
+    这三种功能可用于实现阵列,计算匹配单元,排列结果,数据分组等.实际例子请参考下面的教学示例[[http://orgmode.org/worg/org-tutorials/org-lookups.html][教学示例]].
+
+*** 编辑和调试公式
+    你可以在minibuffer或者直接在字段中编辑一个个的公式. Org也可以准备一个包含表格中所有公式的特殊缓存区. 当对公式进行编辑时,Org在可能的情况下会转换引用为标准格式(类似于B3或者D&这样的引用). 如果你想只使用引用内部格式(类似于@3$2或者$4),请配置变量'org-table-use-standard-references'
+
+    * C-c = 或者 C-u C-c = (org-table-eval-formula) ::
+         在minibuffer中编辑当前列/字段的公式. 参考[[列公式][列公式]]和[[字段公式和区间公式][字段公式和区间公式]].
+    * C-u C-u C-c = (org-table-eval-formula) :: 
+	 为当前字段重新设定一个公式(可以使字段公式也可以是列公式),使用这个命令你可以直接在字段中编辑公式. 与在minibuffer中编辑公式相比,这种方法的优势在于你可以使用命令C-c ?查询字段的信息.
+    * C-c ? (org-table-field-info) :: 
+	 当在表格字段中编辑公式时,高亮公式中鼠标所在位置的字段引用所引用的字段.
+    * C-c } :: 
+	       切换显示行列编号,using overlays(org-table-toggle-coordinate-overlays). 这些信息在每次表格重排之后都会自动更新;你也可以使用C-c C-c来强制更新信息.
+    * C-c { :: 
+	       切换开启或者关闭公式调试器(org-table-toggle-formula-debugger). 具体信息参考下面
+    * C-c ' (org-table-edit-formulas) :: 
+	 打开一个特殊的缓冲区(公式编辑器),可以在里面编辑当前表格所有的公式,在这个缓冲区中,每个公式都显示一行. 如果当前字段包含包含有一个激活的公式,公式编辑器中的光标会标示出它来. 当光标在这个特殊的缓冲区中时,Org会自动高亮任何光标位置的字段引用所引用的字段. 你可以在这个特殊缓冲区中使用下面这些命令来编辑,删除和新增公式
+      * C-c C-c 或 C-x C-s (org-table-fedit-finish) ::
+	   退出公式编辑器,并且保持修改后的公式. 如果加了C-u前缀,那么会对整个表格应用新修改的公式(表格中所有的公式都会被重新计算一遍,然后显示出来)
+      * C-c C-q (org-table-fedit-abort) :: 
+	   退出公式编辑器,而不做任何修改
+      * C-c C-r (org-table-fedit-toggle-ref-type) :: 
+	   对表格编辑器中的所有引用切换显示格式,在标准格式(类似于B3)和内部格式(类似于@3$2)间切换
+      * <TAB> (org-table-fedit-lisp-indent) :: 
+	   美化并缩进当前光标所在的Lisp公式. 当光标所在行包含有Lisp公式时,使用Emacs Lisp的规则来格式化公式. Another <TAB> collapses the formula back again. 在open formula(开放式公式??)中,<TAB>跟在Emacs Lisp mode一样起着重新缩进的功能.
+      * M-<TAB> (lisp-complete-symbol) :: 
+	   补完Lisp符号,就跟在Emacs Lisp mode中一样
+      * S-<up>/<down>/<left>/<right> :: 
+	   切换光标所在的引用. 例如如果现在光标所在的引用是B3,你按下S-<right>之后,该引用变成了C3. 这对相对引用和hline引用也有效
+      * M-S-<up> (org-table-fedit-line-up) 或 M-S-<down> (org-table-fedit-line-down) :: 
+	   上下移动Org buufer中行公式的test line
+      * M-<up> (org-table-fedit-scroll-down) 或 M-<down> (org-table-fedit-scroll-up) :: 
+	   滚动表格所在的窗口
+      * C-c } :: 
+		 显示/关闭表格中各个字段的坐标
+    把一个字段清空并不会删掉这个字段的公式,因为公式实际上是保存在其他行(#_TBLFM行)-这样在下一次重新计算时,该字段又会有新的值初出现. 要删掉一个字段中的公式,你需要在编辑公式要求输入新公式时输入一个空回复,或者直接编辑#+TBLFM行
+
+    你可以直接编辑'#+TBLFM'行,然后在该行运行C-c C-c来对改变后的公式进行重新计算.或者也可以在表格中执行普通的重计算命令.
+
+    * 使用多个#+TBLFM行
+
+    你可以应用多个临时公式.这样可以方便切换公式.在表格下面设置多个‘#+TBLFM’行,然后在公式上按下C-c C-c键来应用公式.下面是一个例子
+    #+BEGIN_SRC org
+    | x | y |
+    |---+---|
+    | 1 |   |
+    | 2 |   |
+    #+TBLFM: $2=$1*1
+    #+TBLFM: $2=$1*2
+    #+END_SRC
+    在‘#+TBLFM: $2=$1*2’上按下C-c C-c产生:
+    #+BEGIN_SRC org
+    | x | y |
+    |---+---|
+    | 1 | 2 |
+    | 2 | 4 |
+    #+TBLFM: $2=$1*1
+    #+TBLFM: $2=$1*2
+    #+END_SRC
+    Note: If you recalculate this table (with C-u C-c *, for example), you will get the following
+    result of applying only the first ‘#+TBLFM’ line.
+    #+BEGIN_SRC org
+    | x | y |
+    |---+---|
+    | 1 | 1 |
+    | 2 | 2 |
+    #+TBLFM: $2=$1*1
+    #+TBLFM: $2=$1*2
+    #+END_SRC
+
+
+    * 调试公式
+
+    当公式的计算产生错误时,字段中的内容变为字符串'#ERROR'. 如果你想知道在变量替换和计算时都发生了什么以便寻找bug,你可以在Tbl菜单上打开公式调试功能然后重新对改公式计算一次(在字段中按下C-u C-u C-c = <RET>).随后就会显示详细信息出来.
+*** 更新表格
+    表格一般来说不会自动进行重计算,而是需要通过命令来触发. 要想使表格半自动地进行重计算,请参考[[高级特性][高级特性]],
+
+    要想对整个表格或者一整行进行重新计算,可用使用下面的命令:
+    * C-c * (org-table-recalculate) ::
+         重新计算当前行,计算的方法是首先从左到右对该行的每个字段都计算一次列公式,然后再当前行的字段公式和区间公式.
+    * C-u C-c * 或C-u C-c C-c :: 
+	 一行一行地重新计算整个表格. 任何在第一个hline之前的行都被认为是表头而排除在重计算操作之外
+    * C-u C-u C-c * 或 C-u C-u C-c C-c (org-table-iterate) :: 
+	 重复对表格进行重计算,直到没有变化可以继续产生. 如果有些字段的计算结果依赖于其他字段的值,而这些被依赖的字段的值需要在指向了一系列的计算之后才能得到的时候,这时候这项功能就很有必要了.
+    * M-x org-table-recalculate-buffer-tables <RET> :: 
+	 重新计算当前缓冲区中的所有表格
+    * M-x org-table-iterate-buffer-tables <RET> :: 
+	 对当前缓冲区中的所有表格进行迭代计算,以便converge(汇聚??)表与表之间的依赖关系.
+*** 高级特性
+
+    如果你想自动重计算字段的值,或者你向为字段和列分配名字[fn:表格8],你需要保留表格的第一列作存放特殊的标志字符.
+
+    * C-# (org-table-rotate-recalc-marks) ::
+         使第一列的标志字符在' ','#','*','!','$'这几个状态之间切换. 如果存在一个激活区域,则会改变该区域中所有的标志.
+
+    下面的例子是一个记录学生考试成绩的表格,里面用到了这些特性:
+    #+BEGIN_SRC org
+      |---+---------+--------+--------+--------+-------+------|
+      |   | Student | Prob 1 | Prob 2 | Prob 3 | Total | Note |
+      |---+---------+--------+--------+--------+-------+------|
+      | ! |         |     P1 |     P2 |     P3 |   Tot |      |
+      | # | Maximum |     10 |     15 |     25 |    50 | 10.0 |
+      | ^ |         |     m1 |     m2 |     m3 |    mt |      |
+      |---+---------+--------+--------+--------+-------+------|
+      | # | Peter   |     10 |      8 |     23 |    41 |  8.2 |
+      | # | Sam     |      2 |      4 |      3 |     9 |  1.8 |
+      |---+---------+--------+--------+--------+-------+------|
+      |   | Average |        |        |        |  29.7 |      |
+      | ^ |         |        |        |        |    at |      |
+      | $ | max=50  |        |        |        |       |      |
+      |---+---------+--------+--------+--------+-------+------|
+      #+TBLFM: $6=vsum($P1..$P3)::$7=10*$Tot/$max;%.1f::$at=vmean(@-II..@-I);%.1f 
+    #+END_SRC
+
+    *注意事项*:请注意,对于这些特殊的表格来说,使用 C-u C-c *  来重计算表格,只对标记了'#'或'*'的行,和那些分配了公式的字段生效. 列公式对当第一个字段为空的行无效.
+
+    这些标志字符的意义如下所示:
+    * '!' ::
+         该行的字段中的值为列的名称,因此你可以使用引用'$Tot'来代替'$6'
+    * '^' :: 
+	     这一行定义了上一行相应字段的名称. 有着这种定义,任何表格中的公式可以使用'$m1'来引用值'10'. 而且如果你为这个命名了的字段分配公式,该公式会被存储为'$name=...'的形式
+    * '-' :: 
+	     类似于'^',但是是为下一行的相应字段定义名字的.
+    * '$' :: 
+	     这一行的字段可以为公式定义参数. 举个例子,如果'$'行中的某个字段包含了'max=50',则表格中的公式可以使用'$max'来引用50这个值. 参数就好像是常量一样,所不同的是它们(参数)能够根据每个表格来定义.
+    * '#' :: 
+	     当在行中按下了<TAB>或<RET>或S-,TAB>,所有该标示的行中的字段会自动重新计算. 另外当使用全局重计算命令(C-u C-c * )时这些行也会进行重计算,而无标示的行则对该全局重计算命令无效.
+    * '*' :: 
+	     当使用全局重计算命令(C-u C-c * )时,该标志行也会进行重计算,但是该标志行并不会自动进行重计算. 当自动重计算功能会明显降低编辑效率时,该标志很有用.
+    * ' ' :: 
+	    无标志字符的行在使用C-u C-c * 进行重计算时并不会进行重计算. 只有标示了'#'或'*'的行才会重新计算.
+    * '/' :: 
+	     不导出带有该标志的行. 对那些包含了narrowing '<N>'标记(缩小的'<N>'标记)或列的分组标志很有用.
+
+    最后,你可能会对使用梦幻般的'calc.el'包能实现那些功能很感兴趣, 下面是一个表格,它计算了the Taylor series of degree n at location x for a couple of functions. 
+    #+BEGIN_SRC org
+      |---+-------------+---+-----+--------------------------------------|
+      |   | Func        | n | x   | Result                               |
+      |---+-------------+---+-----+--------------------------------------|
+      | # | exp(x)      | 1 | x   | 1 + x                                |
+      | # | exp(x)      | 2 | x   | 1 + x + x^2 / 2                      |
+      | # | exp(x)      | 3 | x   | 1 + x + x^2 / 2 + x^3 / 6            |
+      | # | x^2+sqrt(x) | 2 | x=0 | x*(0.5 / 0) + x^2 (2 - 0.25 / 0) / 2 |
+      | # | x^2+sqrt(x) | 2 | x=1 | 2 + 2.5 x - 2.5 + 0.875 (x - 1)^2    |
+      | * | tan(x)      | 3 | x   | 0.0175 x + 1.77e-6 x^3               |
+      |---+-------------+---+-----+--------------------------------------|
+      #+TBLFM: $5=taylor($2,$4,$3);n3
+    #+END_SRC
+
+** Org绘图
+   Org绘图可以利用保存在Org表格内的信息输出图形,也可以用ASCII-art表示图形.
+
+   * 使用Gnuplot绘制图表
+
+   通过使用Gnuplot [[http://www.gnuplot.info]] 和gnplot-mode http://xafs.org/BruceRavel/GnuplotMode ,Org-Plot可用根据表格中的数据生成2D和3D图表. 这里有一个例子: 首先确保你安装了Gnuplot和Gnuplot mode,然后对下面的表格使用C-c " g或者M-x org-plot/gnuplot <RET>.
+   #+BEGIN_SRC org
+     #+PLOT: title:"Citas" ind:1 deps:(3) type:2d with:histograms set:"yrange [0:]"
+     | Sede      | Max cites | H-index |
+     |-----------+-----------+---------|
+     | Chile     |    257.72 |   21.39 |
+     | Leeds     |    165.77 |   19.68 |
+     | Sao Paolo |     71.00 |   11.50 |
+     | Stockholm |    134.19 |   14.33 |
+     | Morelia   |    257.56 |   17.67 |
+   #+END_SRC
+
+   注意,Org Plot会自动把表格的标题作为生成图表的标签. 通过表格前的#+PLOT:行,你还可以定义plot的标签,类型,内容和展示. 下面列出了完整的Org-plot选项. 更多的信息和例子请参考Org-plot教程[[http://orgmode.org/worg/org-tutorials/org-plot.html]]
+
+   * Plot选项
+
+   * set ::
+           当绘图时,用于设置任何的gnuplot选项
+   * title :: 
+	   指定plot的标题
+   * ind :: 
+	   指定表格的哪一列作为x轴
+   * deps :: 
+	   指定描绘哪些列,该设置的格式类似于Lisp中的list,由小括号括起来,内部用空格分隔,例如'dep:(3 4)'指定只描绘第3,4列(默认情况下,除了指明为ind的列,其他的列都会被描绘)
+   * type :: 
+	   指定plot是2d还是3d还是grid的
+   * with :: 
+	   对每一个要被绘制的列都插入一个指定的with选项(例如,lines,points,boxes,impulses,等等). 默认值为lines
+   * file :: 
+	   如果你想将描绘输出成一个文件,指定输出文件的路径
+   * labels :: 
+	   用一个列表指定各输出列的标签(默认情况下,如果列的标题村爱的话,使用列标题作为标签)
+   * line :: 
+	   在gnuplot脚本中插入指定的一整行(Specify an entire line to be inserted in the Gnuplot script. )
+   * map :: 
+	   当描绘类型为3d或grid时,该选项的值设为t则在描绘时描绘的是一个平面映射而不是3维图形(set this to t to graph a flat mapping rather than a 3d slope)
+   * timefmt :: 
+	   指定Org-mode的时间戳格式,因为它们会被Gnuplot所解析,默认格式为'%Y-%m-%d-%H:%M:%S'
+   * script :: 
+	   如果你想实现完全的自定义,你可以指定一个脚本文件(把文件名放在双引号内)来实现描绘动作. 在正真描绘之前,这个特定脚本中的每个'$datafile'会被替换成生成的数据文件的实际路径. 注意:即使你设置了这个选项,你也可能仍然需要定义plot的type,因为这个选项会影响到生成的数据文件的内容.
+
+   * ASCII指示条
+   当光标在一个数据列内按下C-c " a 或者 M-x orgtbl-ascii-plot <RET>,将在新列内创建当前列的指示条图形.此图形通过一个列公式来实现.当数据源发生变化时,指示条图形可以通过刷新表格进行更新,例如按下 C-u C-c *.
+   #+BEGIN_SRC org
+   | Sede          | Max cites |              |
+   |---------------+-----------+--------------|
+   | Chile         |    257.72 | WWWWWWWWWWWW |
+   | Leeds         |    165.77 | WWWWWWWh     |
+   | Sao Paolo     |     71.00 | WWW;         |
+   | Stockholm     |    134.19 | WWWWWW:      |
+   | Morelia       |    257.56 | WWWWWWWWWWWH |
+   | Rochefourchat |      0.00 |              |
+   #+TBLFM: $3='(orgtbl-ascii-draw $2 0.0 257.72 12)
+   #+END_SRC
+
+   这个公式是一个elisp调用:
+   #+BEGIN_SRC emacs-lisp
+   (orgtbl-ascii-draw COLUMN MIN MAX WIDTH)
+   #+END_SRC
+   COLUMN     数据源列
+   MIN MAX    显示的最小值和最大值,超出范围的数值显示为‘too small’ 或 ‘too large’.
+   WIDTH      指示条列的宽度,默认为'12'.
+
+* 超链接
+  类似于HTML,Org提供了文件内部的链接,和文件外部的链接(可以链接到其他文件,Usenet文章,email等等)
+** 链接的格式
+   Org会识别类似URL的链接并且把它们作为可点击的链接. 然而,Org中链接的一般形式看起来像下面这样子
+   #+BEGIN_SRC org
+   [ [链接地址][描述] ]  或者 [ [链接] ]
+   #+END_SRC
+
+   一旦缓冲区中的链接被补完(所有的方括号都有了), Org将只显示链接中的'描述',而不是链接的完整形式. Link会以'org-link'定义的方式高亮,默认情况下是以下划线标示起来. 你可以直接编辑链接的显示部分(当有描述部分是为'描述'部分,否则为'链接'部分). 要编辑不可见的'链接'部分,把光标放在要编辑的链接上然后按下C-c C-l
+
+   如果光标在链接的起始部分或就在链接中显示文本的后面,然后你按下<DEL>或<BACKSPACE>时,你删掉的是链接中不可见的中括号. 这样会使这个链接变得不完整,因此该链接的内部表现形式会以纯文本的方式展现出来. 再补完这个中括号又会使链接隐藏其内部结构. 要显示出所有链接的内部结构,使用菜单'org->hyperlinks->Literal links'
+** 内部链接
+   如果链接看起来不像是URL,那么它会被认为是链接到当前文件的内部. 最重要的一个例子就是一种看起来像
+   #+BEGIN_SRC org
+    [[#my-custom-id]]
+   #+END_SRC
+   的链接,这种链接会连接到'CUSTOM_ID'属性为'my-custom-id'的条目中. 你需要保证这些自定义的ID在文件中是唯一的.
+   类似于
+   #+BEGIN_SRC org
+   [[My Target]]'或'[[My Target][Find my target]]
+   #+END_SRC
+   会在当前文件中搜索指定文本,并链接过去.
+
+   当光标处于链接上时,可以用C-c C-o或鼠标点击(参考[[链接处理][链接处理]])的方式来进入链接. 连接到客户化ID的链接会指向相应的标题. 匹配文本链接的一个比较好的方法是使用 *专用目标* :用两个尖括号将文本括起来.例如<<My Target>>
+
+   如果 *专用目标* 不存在,链接会试图在buffer内精确匹配单个元素.使用#+NAME命名的关键字,必须放在被引用的行之前,下面是一个例子:
+   #+BEGIN_SRC org
+   #+NAME: My Target
+   | a  | table      |
+   |----+------------|
+   | of | four cells |
+   #+END_SRC
+
+   如果上面的都没有成功匹配,Org会查找与连接文字精确匹配的标题,也可以是一个TODO关键字或标签[fn:超链接1].
+
+   在导出时,内部链接将会用于标识对象,并分配给相应的数字.被标识的对象将通过连接指向它们.特别是没有描述的链接将只显示分配给标记对象的数字[fn:超链接2].下面的例子:
+   #+BEGIN_SRC org
+     - one item
+     - <<target>>another item
+     'Here we refer to item [[target]].
+   #+END_SRC
+   最后一名在寻出时将显示为'Here we refer to item 2'.
+   
+   在非Org文件中,则会搜索跟链接文本匹配的文本内容. 在上面的例子中,匹配的是'my target'.
+这些链接标的会转换为已命名的锚点,可以通过http链接[fn:超链接?]直接定位到这些锚点的位置.
+
+   进入一个链接会把一个mark放置仅Org自己的mark ring中. 这样你可以使用C-c &退回前一个位置. 可以多次使用该命令来退到早期记录的位置上.
+
+*** Radio targets
+    Org可以自动把普通文本中特定的文本转换为链接. 因此不需要明确地创建链接,这些特定的文本会自动创建连接到带有radio target标志的位置. Radio target包裹在三个尖括号中,就像'<<<My Target>> >'这样. 这个radio target使得普通文本中出现'My Target'的地方都被自动转换为链接. 只有在文档第一次加载人Emacs时,Org才会自动去扫描radio target. 在编辑时要更新target列表,可以把光标放到target上,然后按C-c C-c
+** 外部链接
+   Org支持连接到文件,网站,Usenet,email信息,BBDB数据库条目,IRC会议及其日志的链接. 外部链接看起来类似URL.这些外部链接是以一个简短的标示串开头后面紧跟冒号,在冒号后面不能有空格.下面是各种类的链接的例子:[fn:超链接3] [fn:超链接4]
+   #+BEGIN_SRC org
+     http://www.astro.uva.nl/~dominik          on the web
+     doi:10.1000/182                           DOI for an electronic resource
+     file:/home/dominik/images/jupiter.jpg     file, absolute path
+     /home/dominik/images/jupiter.jpg          same as above
+     file:papers/last.pdf                      file, relative path
+     ./papers/last.pdf                         same as above
+     file:/myself@some.where:papers/last.pdf   file, path on remote machine
+     /myself@some.where:papers/last.pdf        same as above
+     file:sometextfile::NNN                    file, jump to line number
+     file:projects.org                         another Org file
+     file:projects.org::some words             text search in Org file
+     file:projects.org::*task title            heading search in Org file
+     docview:papers/last.pdf::NNN              open in doc-view mode at page
+     id:B7423F4D-2E8A-471B-8810-C40F074717E9   Link to heading by ID
+     news:comp.emacs                           Usenet link
+     mailto:adent@galaxy.net                   Mail link
+     mhe:folder                                MH-E folder link
+     mhe:folder#id                             MH-E message link
+     rmail:folder                              RMAIL folder link
+     rmail:folder#id                           RMAIL message link
+     gnus:group                                Gnus group link
+     gnus:group#id                             Gnus article link
+     bbdb:R.*Stallman                          BBDB link (with regexp)
+     irc:/irc.com/#emacs/bob                   IRC link
+     info:org#External links                   Info node link
+     shell:ls *.org                            A shell command
+     elisp:org-agenda                          Interactive Elisp command
+     elisp:(find-file-other-frame "Elisp.org") Elisp form to evaluate 
+   #+END_SRC
+     以上内置的链接类型里,有些需要发行包目录才有效(参考[[安装][安装]]).例如:当你加载了相应的发行包目录时,链接到VM或Wanderlust消息的连接才有效.
+   #+BEGIN_SRC org
+     vm:folder                                 VM folder link
+     vm:folder#id                              VM message link
+     vm://myself@some.where.org/folder#id      VM on remote machine
+     vm-imap:account:folder                    VM IMAP folder link
+     vm-imap:account:folder#id                 VM IMAP message link
+     wl:folder                                 WANDERLUST folder link
+     wl:folder#id                              WANDERLUST message link
+   #+END_SRC
+   要自定义Org以支持新的链接类型,(参考[新增链接类型][新增链接类型])
+
+   一个链接应该被两个中括号括住,并且可以包含一个描述文本,这个描述文本会代替URL显示给用户看(参考[[链接的格式][链接的格式]]),例如:
+   #+BEGIN_SRC org
+     [[http://www.gnu.org/software/emacs/][GNU Emacs]]
+   #+END_SRC
+
+   如果描述部分是一个文件的名字或者是一个连接到图像的链接,HTML导出时(参考[[导出HTML][导出HTML]])会内嵌入这个图像并显示为一个可点击的按钮. 如果链接中根本没有定义描述而定义的link是指向一个图形文件的,那么这个图形文件会被内嵌入导出的的HTML文件中.
+
+   Org也会在普通文本中查找外部链接并且把它们当做真正的链接处理. 如果link部分包含有空格(例如'bbdb:Richar stallman'),或者如果你需要明确link的结尾位置所在,你可以把它们放入方括号中.
+** 链接处理
+   Org提供了多种方法来创建和跟踪链接
+   * C-c l (org-store-link) ::
+	 在创建一个连接到当前位置的链接. 这是一个全局命令(你需要自己创建绑定热键),你可以用它在任一个buffer中创建指向自己的连接. 这个被创建出来的链接可以随后插入到Org-mode的buffer中保存起来(见下文). 具体创建的是哪个类型的链接由当前buffer的类型来决定
+	 * Org-mode buffer
+	   对于Org文件来说,若光标位于'<<target>>'处,则创建的链接指向该target. 否则链接指向当前的headline,同时以headline作为链接中描述部分的内容[fn:超链接5]
+
+	   如果headline有CUSTOM_ID属性的话,会创建一个连接到该客户化ID的链接. Org会创建一个全局唯一的ID,并根据org-link-to-org-use-i的值新增一条指向该ID的链接/替换原有的自定义ID[fn:超链接6]. 因此在Org buffer中使用这个命令有可能会创建两个链接,一个指向可读的自定义ID,一个指向全局唯一的链接,这个全局唯一的链接即使在原条目被移动到其他文件后也是可用的. 随后当你要把链接插入Org文件时,你需要决定插入哪个链接.
+
+	 * Email/News客户端:VM,Rmail,Wanderlust,MH-E,Gnus
+	   在很多Emacs邮件客户端buffer使用这个命令时,产生的链接会指向当前的邮件,甚至,在某些GNUS buffer中,可用指向分组. 邮件的作者和标题会作为链接的描述信息
+
+	 * Web浏览器:Eww,W3和W3M
+	   生成的链接连接到当前的URL,网页title作为链接的描述信息
+         * Contacts: BBDB
+           Links created in a BBDB buffer will point to the current entry.
+	 * Chat:IRC
+	   对于IRC链接来说,如果你设置变量org-irc-link-to-logs的值为t,那么创建的链接指向当前会话的日志,链接的形式类似于'file:/'. 否则的话,创建的链接指向当前用户/频道/服务器,链接的形式为'irc:/'
+
+	 * 其他类型的文件
+	   对于其他类型的文件,创建的链接指向该文件,同时链接会有一个搜索字符串(参考[[搜索选项][搜索选项]])指向当前行的内容.If there is an active region, the selected words will form the basis of the search string. If the automatically created link is not working correctly or accurately enough, you can write custom functions to select the search string and to do the search for particular file types—see ([[定制搜索][定制搜索]]). The key binding C-c l is only a suggestion—see [[安装][安装]].
+         * Agenda视图
+           当光标处于agenda视图时,将创建一个指向当前行引用的链接.
+
+   * C-c C-l (org-insert-link) :: 
+	 插入一个链接[fn:超链接7].它会提示你输入一个链接,并将这个链接插入到当前的buffer中. 你可以输入上面例子中提到的任何类型的链接.随后系统会让你输入链接的描述文本并将生成的链接插入到buffer中[fn:超链接8]. 如果在调用该命令时选中了一些文本,那么选中的文本会成为默认的描述文本呢
+	 * 插入存储过的链接
+	   所有在当前会话期存储过的链接都会记录到该命令提示的历史信息中,因此,在提示符中你可以用<up>和<down>(或者M-p/n)来切换历史链接信息
+
+	 * 支持补全
+	   如果你要插入的链接前缀类似于'http:'或'ftp:',你可用通过按<TAB>键来自动补全.比如你可以只写链接的简写形式,然后按TAB键扩充它(参考[[链接的缩写][链接的缩写]]).如果你在输入前缀部分之后直接按<RET>,Org会根据前缀的不通为各种不通类型的链接提供不通的补全模式[fn:超链接9].例如,如果你输入`file <RET>`,就会进入文件路径补全状态(另一种进入该状态的方式是用C-u C-c C-l,见下文),而如果你输入`bbdb <RET>`,就会进入联系人名称补全的状态
+   * C-u C-c C-l  :: 
+	 插入一个指向本地文件的链接,你可以使用文件路径的补全功能来补全文件路径. 若插入的文件路径为相对路径,则该相对路径是相对与正在编辑的Org文件的目录来说的.你可以用`~/`代替你的home目录. 你也可用通过两个C-u前缀来强迫插入的链接为绝对路径
+   * C-c C-l :: 光标需要停在链接上
+	 当光标停在链接上时,C-c C-l允许你编辑链接的连接和描述信息
+   * C-c C-o (org-open-at-point) :: 
+         打开光标所在的链接,Org会使用web浏览器(由值browse-url-at-point定义)打开URL,会使用VM/MH-E/Wanderlust/Gnus/BBDB打开相应的链接,若链接为shell链接还会在在shell中执行链接中的命令.若链接为内部链接,该命令会进行相应的搜索操作.若光标出于标题的TAG列表处,则会创建相应的TAGS视图.如果光标处于时间戳上,它会为该日期生成一个agenda.另外如果光标处于'file:'类型的链接处,它会打开链接所指向的文件,如果指向的文件是远程文件或文本文件则直接用Emacs打开,如果是本地的非文本文件,则命令会挑选合适的程序打开. 命令是根据文件的扩展名来识别文件类型的. 哪种文件用哪种程序打开由org-file-apps选项配置. 如果你想用Emacs代替默认的程序来打开链接指向的文件,使用C-u前缀执行该命令. 而如果你不想用Emacs打开链接所指向的文件,使用C-u C-u前缀来调用该命令.如果光标位于headline处,而这个headline刚好又不是个链接,则命令会搜索该headline下的所有链接并显示给你选择打开哪个链接.如果你想setup the frame configuration for following links ,配置org-link-frame-setup变量
+   * <RET> :: 
+         若设置了'org-return-follows-link'值,<RET>也会打开光标所在的链接
+   * 鼠标右键 鼠标左键 :: 
+         在链接上单击鼠标右键,则会像执行了C-c C-o一样的打开链接. 在Emacs22或更高版本上,鼠标左键也能打开链接
+   * 鼠标中间键 :: 
+         类似于鼠标右键,但是强制使用Emacs打开链接,如果链接是内部链接,那么会在另一个窗口显示链接内容[fn:超链接10]
+   * C-c C-x C-v (org-toggle-inline-images) :: 
+         切换是否内联显示连接的图片. 正常情况下,它只会内联哪些在链接中没有描述信息的图片,比如那些在导出时会内联的图片. 如果执行该命令时加了一个前缀参数,则命令也会显示那些有描述信息的链接图片. 通过配置变量`org-startup-with-inline-images`[fn:超链接11]你也可以让emacs在一打开org的时候就内联显示图片.
+   * C-c % (org-mark-ring-push) :: 
+         把当前位置压入mark ring中,以方便以后方便跳回该位置. 那些打开链接的命令都会自动执行这一步
+   * C-c & (org-mark-ring-goto) :: 
+         跳回一个已经记录了的位置. 在访问内部链接和执行`C-c %`命令时都会记录下位置信息. 连续使用该命令多次可用跳到mark ring中更远的记录位置处
+   * C-c C-x C-n (org-next-link) / C-c C-x C-p (org-previous-link) :: 
+         跳到该buffer下一个/前一个链接处. 当到达buffer的最后一个/第一个链接处时,在执行该命令,第一次会显示失败,之后就跳到最后一个/第一个链接处继续搜索. 这两个命令的绑定键确实太长了;你可能希望用C-n和C-p来绑定:
+     #+BEGIN_SRC emacs-lisp
+          (add-hook 'org-load-hook
+            (lambda ()
+              (define-key org-mode-map "\C-n" 'org-next-link)
+              (define-key org-mode-map "\C-p" 'org-previous-link)))
+     #+END_SRC
+
+** 在Org外使用链接
+   不仅在Org模式中,在其他模式下你也可以插入和进入使用Org语法标示的链接. 要做到这一点,你可以就像下面所示创建两个全局命令(你可以选择自己喜欢的全局键)
+   #+BEGIN_SRC emacs-lisp
+     (global-set-key "\C-c L" 'org-insert-link-global)
+     (global-set-key "\C-c o" 'org-open-at-point-global)
+   #+END_SRC
+** 链接的缩写
+   长URL输起来很麻烦,而且很多时候在文档中需要插入很多类似的链接. 这个时候你就可以使用链接缩写的功能了. 一个缩写的链接看起类似于
+   #+BEGIN_SRC org
+     [[linkword:tag][description]] 
+   #+END_SRC
+   这里tag是可选的. linkword必须是一个word,以字母开头后面跟着字母,数字,'-'和'_'. Org根据变量'org-link-abbrev-alist'中的信息来分析缩写. 该变量把linkword与替代的文本关联起来.下面是个例子
+   #+BEGIN_SRC emacs-lisp
+     (setq org-link-abbrev-alist
+       '(("bugzilla" . "http://10.1.2.9/bugzilla/show_bug.cgi?id=")
+         ("google"   . "http://www.google.com/search?q=")
+         ("gmap"     . "http://maps.google.com/maps?q=%s")
+         ("omap"     . "http://nominatim.openstreetmap.org/search?q=%s&polygon=1")
+         ("ads"      . "http://adsabs.harvard.edu/cgi-bin/nph-abs_connect?author=%s&db_key=AST"))) 
+   #+END_SRC
+   如果被替代的文本中包含字符串'%s', 字符串'%s'会被tag所取代. 否则tag会直接浮在字符串后面并以此来创建一个链接. 你也可以指定一个函数来创建链接,该函数要求只接受tag这唯一一个参数.
+
+   通过上面的设置,你可以使用'[[bugzilla:129] ](不含空格)'来连接到一个指定的bug, 使用'[[google:OrgMode] ]'来在web上搜索'OrgMode',使用'[[gmap:51 Franklin Street,Boston] ]'显示自由软件组织在地图上的位置,使用'[[omap:Science Park 904, Amsterdam, The Netherlands] ]'来显示Carsten office在地图上的位置,使用'[[ads:Dominik,C] ]'来查找Org的作者在Emacs hacking时做了什么.
+
+   如果你只需要为单独一个Org buffer指定缩写,你可以在文件中定义:
+   #+BEGIN_SRC org
+     #+LINK: bugzilla  http://10.1.2.9/bugzilla/show_bug.cgi?id=
+     #+LINK: google    http://www.google.com/search?q=%s 
+   #+END_SRC
+   在'['之后可以使用In-buffer补全功能(参考[补全功能][补全功能])来补全缩写. 你也可以定义一个函数,该函数实现对使用C-c C-l插入的链接的特定支持动作(例如补完动作). 这个函数不接受任何参数并且返回带前置的完整链接.你可以像这样为链接增加补全功能;
+   #+BEGIN_SRC emacs-lisp
+   (org-link-set-parameters ``type'' :complete #'some-function)
+   #+END_SRC
+
+** 搜索选项
+   连接到文件的链接(文件链接)可以包含附加的信息来让Emacs在进入链接时跳转到文件的指定位置. 这个附加信息是放置在双[fn:超链接12]冒号(::)之后,它可以是行号或者是搜索项. 例如当用C-c l创建一个连接到文件的链接时(参考章节[[链接处理][链接处理]]), 这个链接会编码一个单词到当前行中,这个单词作为搜索字符串,当用C-c C-o进入链接时,就可以根据这个搜索字符串找回这一行.
+
+   下面是一些例子,演示了添加搜索项到文件链接的不同方式.
+   #+begin_example
+     [[file:~/code/main.c::255]]
+     [[file:~/xx.org::My Target]]
+     [[file:~/xx.org::*My Target]]
+     [[file:~/xx.org::#my-custom-id]]
+     [[file:~/xx.org::/regexp/]] 
+   #+end_example
+
+   * 255 ::
+        跳转到第255行
+   * My Target :: 
+		  搜索链接项<<My Target>>,或者直接文本搜索'my target', 类似于文件内链接的搜索,参考[[内部链接][内部链接]]. 在导出HTML时(参考章节[#HTML export][导出HTML]),这种文件链接会导出为HTML链接,连接到被连接文件的指定anchor处.
+   * *My Target :: 
+		   在Org文件中,精确搜索名为为My Target的标题
+   * #my-custom-id :: 
+		      连接到CUSTOM_ID属性值为my-custom-id的标题
+   * /regexp / :: 
+		 使用regexp做正则搜索. 该命令使用Emacs命令occur来在新窗口中列出所有的匹配项. 如果被连接文件处于Org模式下,org会使用org-occur命令来创建这些匹配的sparse tree
+
+   作为简化,一个文件名为空的文件连接,默认是连接到当前文件的. 例如'[[file:::find me] ]'(没有空格),会在当前文件中搜索'find me',就好像'[[find me] ]'一样.
+** 定制搜索
+   文件链接中的字符串搜索的默认实现并不能在所有情况下都能正常工作. 例如,BibTex数据库文件有很多类似于'year="1993"'这样的条目,由于BibTex条目的唯一识别就是引用的键值(key),因此这些条目可能不能很好地进行字符串搜索(??意思可能是当对BibTex数据库进行搜索时,只希望在key中搜索,而不在value中搜索)
+
+   如果你遇到了这样的问题,你可以为特定的文件类型指定客户化的函数来实现正确的字符串搜索. 使用add-hook,这些函数需要添加到hook变量'org-create-file-search-functions'和变量'org-excute-file-search-functions'中. 要了解更多的信息可以参考这两个变量的docstring. org实际上使用这里定义的实现来对BibTex数据库文件进行搜索,你可以参考文件'org-bibtex.el'作为一个实现的例子.
+
+* Footnotes
+
+[fn:表格1] 要插入一个竖线到表格字段中,使用\ vert(去掉空格)代替,若要插入竖线到单词中,则用\ vert{}(去掉空格)代替,例如abc\vert{}def.
+
+[fn:表格2] 诚然它在Emacs中是无效的,但是它在导出为HTML使却有效.
+
+[fn:表格3] Org能够识别用户使用'B4'这种写法,但是当Org提供公式来编辑时,不会采用这种引用的表示法. 你可以使用变量'org-table-use-stand-references'来定制这种行为.
+
+[fn:表格4] 为了向后兼容性,你可以使用特定的名称类似$LR5和$LR12,分别引用的是表格的倒数第5和倒数第12行. 然而,现在这种语法已经被弃用, 在新文档中不应该再使用这种语法了,现在使用@>$代替.
+
+[fn:表格5] 这种操作所花时间的时间复杂度为O(N^2),因为表格FOO需要首先被解析一边这样每一行才能被拷贝过来.
+
+[fn:表格6] 'constants.el'通过两种单位系统来提供常量值,分别是SI和cgs. 具体使用哪个单位系统取决于变量'constants-unit-system'的设置. 你也可以通过#+STARTUP选项中的constSI和constcgs来为某个文件设置该属性的值.
+
+[fn:表格7] 使用printf进行重新格式化时,精度的指定是收到限制的.这是因为,传给printf的值会自动被转换为integer或double类型. integer型数字被限制为包括符号位一共32bit,超过就会被截断. 而double型被限制为精度为64位其中保留16位小数(leaves approximately 16 significant decimal digits)
+
+[fn:表格8] 这里名字必须是以字母数字开头,并且只使用字母数字和下划线
+
+[fn:超链接1] 插入一个连接到标题的链接时,可以使用内建的自动补全功能.只需要输入一个星号后跟着几个可先的字母然后按下M-TAB键.在当前buffer内的所有主题都将成为自动补全的候选项.
+
+[fn:超链接2] 当把一个#+NAME关键字做为目标时,为了得到适当的编号,会强制使用关键字#+CAPTION(参考[Images and tables]).
+
+[fn:超链接3] 搜索的实际行为依赖于变量'org-link-search-must-match-exact-headline'的值. 如果该值为nil则执行模糊查询. 如果该值为t,则精确匹配标题. 如果该值为'query-to-create'则精确匹配标题,但若匹配不到,则创建一个新标题.
+
+[fn:超链接4] 标题搜索总是使用精确匹配标题,忽略空格和cookies.如果没有找到相应标题,同时org-link-search-must-match-exact-headline的值是query-to-create时,则要求用户创建相对应的标题.
+
+[fn:超链接5] 如果标题中含有时间戳,时间戳部分不会包含在链接中,从而导致一个错误的链接,因此,最好不要在标题中放置时间戳.
+
+[fn:超链接6] 必须先加载org-id.el库,可以通过使用org-customize让org-id在org模式下有效或在你的Emacs初始化文件内加入(require 'org-id).
+
+[fn:超链接7] 你不是一定要用这个命令才能插入链接. Org中的链接其实只是个纯文本而已, 你可以直接在buffer中输入或者复制这些文本. 使用这个命令,链接自动被双方括号括住,随后你需要输入可选的描述信息.
+
+[fn:超链接8] 把存储的链接插入buffer之后,这个链接会从存储链接的列表中移走. 如果你希望插入链接之后,链接还保存在列表中,你可以使用`c-u c-u c-u c-c c-l`或者配置选项`org-keep-stored-link-after-insertion`
+
+[fn:超链接9] 如果一个在org-link-parameters里的链接的':complete'属性内定义了自动补全功能时有效.(英文原文在此This works if a completion function is defined in the ‘:complete’ property of a link in org-linkparameters.)
+
+[fn:超链接10] 参考选项org-display-internal-link-with-indirect-buffer
+
+[fn:超链接11] 对应#+STARTUP中的关键字inlineimages和noinlineimages
+
+[fn:超链接12] 为了向后兼容,当附加信息为行号时,也可以使用单冒号(:)
+

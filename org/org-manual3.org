@@ -1,0 +1,810 @@
+* TODO事项
+
+Org-mode并不把TODO列表作为单独的一种文档来看待[fn:TODO事项1]. 相反,由于在记录的时候常常会有TODO事项发生,因此TODO事项被认为是记录文件中中不可分割的一部分! 使用Org可用很容易的把各级条目标记为TODO事项. 通过这种方法,可用避免信息的重复,同时TODO事项的整个内容也是可见的
+
+  当然,这种方式组织的TODO事项就会分散在你的记录文件的各个地方. Org-mode通过提供各种方法来补偿这一点.
+** TODO基本功能
+   任何以·TODO·开头的标题都被认为是TODO事项，例如
+
+   #+BEGIN_SRC org
+    *** TODO Write letter to Sam Fortune
+   #+END_SRC
+   关于TODO事项最重要的命令有：
+   * C-c C-t (org-todo) ::
+        让当前事项的TODO状态之间切换
+        #+BEGIN_EXAMPLE
+        ,-> (unmarked) -> TODO -> DONE --.
+        '--------------------------------'
+        #+END_EXAMPLE
+        如果TODO关键字有快速访问键(参考[[快速访问TODO状态]]),将显示一个快速选择TODO关键字的接口;这是在org-use-fast-todoselection设置为non-nil时的默认行为.
+        在timeline和agenda缓存区中,使用t命令键也能够实现这样的切换(参考[#Commands in the agenda buffer][agenda缓存区中的命令])
+   * C-u C-c C-t ::
+		    当TODO关键字没有选择键时,使用补全方式选择特定的关键字;否则在TODO状态间循环选择.当org-use-fast-todo-selection设置为prefix时,使用快速选择界面.
+   * S-<right>  /  S-<left> ::
+        循环选择下一个/上一个TODO状态. 在事项有超过两个TODO状态的时候最有用(参考章节[[扩展TODO关键字][扩展TODO关键字]]). 要了解`shift-selection-mode`对改名了的而影响,参考章节[#Packages that lead to conflicts with Org mode][与Org mode冲突的包].参考变量`org-treat-S-cursor-todo-selection-as-state-change`变量的说明
+   * C-c / t (org-show-todo-key) ::
+        在一个[[稀疏树][稀疏树]]中查看TODO事项. 这回折叠起整个buffer只显示所有的未完成事项及其标题. 在命令前加上前缀(C-u C-c / t)可用搜索指定的TODO状态,你会被要求输入需要搜索的TODO状态(可用'KWD1|KWD2'的形式输入多个TODO状态),命令会列出匹配的所有事项. 如果调用该命令时附加了一个数字型的前缀参数N,则会匹配变量`org-to-keywords`中的第N个TODO状态. 如果调用该命令时加了两个前缀参数,则所有未完成和已完成的事项都会被找出来
+   * C-c a t (org-todo-list) ::
+        显示全局的TODO列列表,从所有加入agenda的文件(参考[[Agenda视图][Agenda视图]])中收集所有的未完成事项到一个缓冲区中. 这个新buffer会处于agenda-mode,agenda-mode提供了很多命令来查看,操作buffer中的这些TODO事项(参考章节[[Agenda buffer命令][Agenda buffer命令]]). 更多信息请见章节
+   * S-M-<RET> (org-insert-todo-heading) ::
+        在当前TODO事项下面增加一个新的TODO事项
+   改变TODO状态也会触发tag改变事件. 细节方面请参考选型'org-todo-state-tags-triggers'的docstring
+** 扩展TODO关键字
+   默认情况下,TODO事项只有两种状态:TODO和DONE. Org-mode允许你通过设置`TODO 关键字`来对自己的TODO事项进行划分.(保存在`org-todo-keywords`中). 不同的文件可用有自己独特的TODO关键字设置.
+   
+   需要注意的是可用通过打tag的方式来对标题和TODO事项进行区分(参考章节[[Tags][Tags]])
+*** 工作流关键字
+    你可以使用TODO关键字来标示事项处于工作流程中的不同状态.例如[fn:TODO事项2]
+    #+BEGIN_SRC emacs-lisp
+        (setq org-todo-keywords
+        '((sequence "TODO" "FEEDBACK" "VERIFY" "|" "DONE" "DELEGATED")))
+    #+END_SRC
+    这个`|`竖线划分了哪些状态是属于未完结状态,哪些状态是出于已完结状态. 如果你没有提供分隔线,那么最后那个状态被认为是已完结状态. 通过上面这个配置之后,当用命令`C-c C-t`切换状态时,会先从TODO切换到FEEDBACK,然后是FEEDBACK,最后是DONE和DELEGATED状态. 你也可以使用数字前缀来快速选择特定的状态,例如`C-3 C-c C--t`会使得状态立即编程VERIFY. 你也可以使用`S-<left>`来在这个序列中回退状态. 如果你定义了太多的状态,你可以使用in-buffer补全(参考[#Completion][补全]章节)甚至是单个特定的选择键(参考章节[[快速访问TODO状态][快速访问TODO状态]])来插入特定的TODO状态. 你也可用设定当改变TODO状态时记录下当时的时间戳数据,更多信息请参考[[跟踪任务状态][跟踪任务状态]]
+*** 类型关键字
+    你还可以使用TODO关键字标示事项的不同类型. 例如,你可能向标示有些事情是工作事项,有些事情是生活事项. 或者当你与其他人共同合作一个项目时,你可能想分派任务給某个人,这时你可以直接把那些人的名字当作TODO关键字来使用. 配置可能如下所示
+    #+BEGIN_SRC emacs-lisp
+      ,(setq org-todo-keywords '((type "Fred" "Sara" "Lucy" "|" "DONE")))
+    #+END_SRC
+    这时,这些关键字并不是用来标示工作流程中的不同状态的,它们被用来标示不同的类型. 所以这个时候的工作流程是:先把任务分配給某个人,然后等这件事完成了之后,再标记它为DONE状态. 它也支持使用命令`C-c C-t`[fn:TODO事项3]来切换状态. 若你连续按几次`C-c C-t`的话(经过了一个循环之后),`C-c C-t`会变回去,在不同人物之间切换循环. 而当你中断了连续的`C-c C-t`做了其他操作之后之后,再按`C-c C-t`,该命令又变回从人物直接跳到DONE状态了. 同样的,你也可以用前缀参数或补完功能来快速选择特定的人物. 你还可以通过在sparse tree中查看某个特定人物的所有代办事项,方法是在`C-c / t`前加前缀的数字参数. 例如,如果你想看分配給Lucy的所有事项,你可以用命令`C-3 C-c / t`来查看. 同样的道理,若你想在一个单独的buffer中查看Lucy在agenda中各org文件记录的代办事项,你可以用命令`C-3 C-c a t`
+
+*** 在一个文件中设置多个关键字
+    有时候,你可能想使用平行的多个TODO关键字集合. 举个例子来说,你可能向保留有基本的`TODO/DONE`,但是同时需要为bug修复定义一套工作流程状态,并且你还需要一个独立的状态表示事项已经被取消了(这是事项的状态不能是DONE,但是它也没有下一步的行动了). 这时你的配置可能如下
+    #+BEGIN_SRC emacs-lisp
+      (setq org-todo-keywords
+            '((sequence "TODO" "|" "DONE")
+              (sequence "REPORT" "BUG" "KNOWNCAUSE" "|" "FIXED")
+              (sequence "|" "CANCELED")))
+    #+END_SRC
+    各个平行的关键字集合之间的关键字不能出现重复,因为Org-mode需要根据该关键字决定该事项是属于哪种流程状态的. 这样子配置之后,`C-c C-t`只会在各个子序列内部循环切换状态,在这个例子中,`DONE`会先切换到`无`再切换到`TODO`,`FIXED`会切换到`无`再切换到`REPORT`. 因此你需要一种方法来让你在最初选择错误的时候可以切换到其他平行的子序列中. 除了直接敲入关键字或者使用补全功能选择关键字之外,你还可以通过以下命令实现这个目的:
+    * C-u C-u C-c C-t / C-S-<right> / C-S-<left> ::
+	 这些按键会从一个TODO子序列跳到下一个TODO子序列中,在上一个例子中,`C-u C-u C-c C-t`和`C-S-<right>`会从`TODO`或`DONE`直接跳到`REPORT`状态,然后跳到`CANCELED`状态. 需要注意,这里`C-S-<key>`的键绑定是和`shift-selection-mode[# Packages that lead to conflicts with Org mode][与Org-mode冲突的包]`冲突的
+    * S-<right> / S-<left> :: 
+	 这俩命令会遍历所有子序列中的所有关键字,因此S-<right>会从`TODO`到`DONE`再到`REPORT`. 同样的,它也可能与`shift-selection-mode`有冲突,更多细节参考[#Packages that lead to conflicts with Org mode][与Org-mode冲突的包]
+*** 快速访问TODO状态
+    如果你想快速改变事项的状态为某个状态,而不是在各个状态之间遍历,你可以为每个状态指定一个单字母的快捷键. 方法是在每个状态后面加上用括号括住的快捷键[fn:TODO事项4].像这样:
+    #+BEGIN_SRC emacs-lisp
+      (setq org-todo-keywords
+            '((sequence "TODO(t)" "|" "DONE(d)")
+              (sequence "REPORT(r)" "BUG(b)" "KNOWNCAUSE(k)" "|" "FIXED(f)")
+              (sequence "|" "CANCELED(c)")))
+    #+END_SRC
+    你键入`C-c C-t`然后输入状态的快捷键就会立即切换到指定的状态了. 如果你想去掉事项上的状态标识,则用`空格`代替快捷键[fn:TODO事项5]
+*** 为各个文件设置独立的关键字
+    很多时候我们需要为不同的文件设置不同的TODO关键字. 做为文件本地的设置,通过增加一些特殊的行,你可以为每个文件设置自己独有的TODO关键字. 例如,你可以在文件的任何一行内增加下面内容
+    #+BEGIN_SRC org
+     #+TODO: TODO FEEDBACK VERIFY | DONE CANCELED
+    #+END_SRC
+    (你也可以使用`#+SEQ_TODO`,它的意思跟`#+TODO`一样,但是表达更清晰)或
+    #+BEGIN_SRC org
+     #+TYP_TODO: Fred Sara Lucy Mike | DONE
+    #+END_SRC
+    若需要定义多个平行的子序列,则这样配置:
+    #+BEGIN_SRC org
+      #+TODO: TODO | DONE
+      #+TODO: REPORT BUG KNOWNCAUSE | FIXED
+      #+TODO: | CANCELED
+    #+END_SRC
+    你可以用补全的方式保证输入的关键字无误,方法是输入`#+`然后按下`M-<TAB>`
+
+    请注意,`|`后面的状态关键字(如果没有`|`则最后一个关键字)必须是代表完结状态的关键字(不一定需要DONE). 在输入完这些以`#+`开头的配置信息后,在配置信息行按下`C-c C-c`使该行的配置信息生效[fn:TODO事项6]
+*** TODO关键字的显示风格
+    Org-mode为不同的状态关键字分配了不同的显示风格(emacs中大概是以face这个概念来表示显示风格). 默认情况下对于那些表示还未完结状态的状态关键字使用`org-todo`这个face,对于那些表示已完结状态的状态关键字使用`org-done`这个face. 如果你用到了2个以上的不同类别的状态,你可以通过配置变量`org-todo-keyword-faces`来为不同的状态关键字分配不同的face. 举个例子
+    #+BEGIN_SRC emacs-lisp
+      (setq org-todo-keyword-faces
+            '(("TODO" . org-warning) ("STARTED" . "yellow")
+              ("CANCELED" . (:foreground "blue" :weight bold))))
+    #+END_SRC
+    像上面例子中`CANCELED`关键字这样直接定义face属性列表的方式,有可能不能正确的显示出来. 所以最好还是定义一个face然后使用它. 像`STARTED`这样,后面输入的是一个字符串的话,该字符串被解释成是颜色. 而变量`org-faces-easy-properties`定义了改颜色是前景色还是背景色.      
+*** TODO事项之间的依赖关系
+    Org文件是由层级关系和列表组成的,这样的结构使得定义代办事项之间的依赖关系变得很容易. 通常在所有子任务完成之前是不能把父任务标记为完成状态的. 同时平级任务之间也可能存在一定的逻辑关系,使得后面的任务需要等待前面的任务都完成之后才能完成. 通过定义变量`org-enforce-todo-dependencies`,Org会阻止父任务在其子任务全部都完结的情况下被标记为完结状态. 此外,如果某个事项定义了`ORDERED`属性,那么它的子任务只有在前面子任务都完成之后才能被标识为已完成状态.下面是一个例子
+    #+BEGIN_SRC org
+      * TODO Blocked until (two) is done
+      ** DONE one
+      ** TODO two
+      
+      * Parent
+        :PROPERTIES:
+        :ORDERED: t
+        :END:
+      ** TODO a
+      ** TODO b, needs to wait for (a)
+      ** TODO c, needs to wait for (a) and (b)
+      #+END_SRC
+    你可以通过使用NOBLOCKING属性让某个条目不被blocked
+    #+BEGIN_SRC org
+      * This entry is never blocked
+        :PROPERTIES:
+        :NOBLOCKING: t
+        :END:
+    #+END_SRC
+    * C-c C-x o (orgtoggleorderedproperty) ::
+	 打开/关闭当前事项的`ORDERED`属性. 之所以要用给事项定义属性的方式来声明这种顺次的逻辑关系是因为这种逻辑关系往往只是对某项任务是这样的,它不像tag一样具有继承的特性. 当然如果你觉得属性常常被折叠起来不容易看到的话,也可以使用tag来跟踪该属性的变化,方法是定义变量`org-track-ordered-property-with-tag`.
+    * C-u C-u C-u C-c C-t :: 
+	 绕开状态的那些限制,强制更改TODO状态
+    如果你设置了变量`org-agenda-dim-blocked-tasks`, 那么那些由于依赖关系未满足而无法关闭的代办事项在agenda视图中以灰色字体显示甚至是不显示(参考章节[[Agenda视图][Agenda视图]]).请参考[[全局TODO列表][全局TODO列表]]
+
+    你也可以使得这种依赖关系对于checkbox也有效(参考章节[[复选框][复选框]]).你可以设置变量`org-enforce-todo-checkbox-dependencies`. 然后如果某事项有未勾选掉的checkbox的话,也无法切换成完结状态
+
+    如果你需要更复杂的依赖关系(例如在不同的树或文件之间的依赖关系),请使用`org-depend.el`模块.
+** 记录处理过程
+   Org-mode可以在你把代办事项从未完结状态切换到完结状态的时候记录下时间戳和其他一些信息,你甚至可以让它在每次切换状态的时候就记录下这些信息. 这套系统具有很高的可配置性,你可以对某个关键字,或某个文件甚至某个子树范围进行这样的配置. 要了解如何为事项统计所花的工作时间,可以参考章节[[计算工作时间][计算工作时间]]
+*** 结束任务
+    能够跟踪某任务什么时候完成是最基本的记录功能. 这项功能可以通过下面这条语句开启[fn:TODO事项7]
+    #+BEGIN_SRC emacs-lisp
+       (setq org-log-done 'time)
+    #+END_SRC
+    之后,每次你把一项未完结状态的任务切换到已完结状态的时候,都会在该任务标题下插入一行`CLOSED:[时间戳]`. 如果你把该任务状态又切换回未完结状态,这一行会被删除掉. 除非你设置变量org-closed-keep-when-no-todo到non-nil状态.如果你希望除了记录时间戳还可以记录一些附加信息,配置[fn:TODO事项8]
+    #+BEGIN_SRC emacs-lisp
+       (setq org-log-done 'note)
+    #+END_SRC
+    这样当你把未完结状态的任务切换到已完结状态时,会被提示输入要保存的附加信息,该附加信息会存储在该任务下面,并以`Closing Note`开头
+	
+    在timeline(参考章节[[单文件的时间线][单文件的时间线]])和agenda(参考章节[[周/日agenda][周/日agenda]])视图中,你可以使用`l`键来显示每日带有'CLOSED'时间戳的代办事项,它会给你一个已完成事项的总括
+*** 跟踪任务状态
+    当使用工作流(参考[[工作流关键字][工作流关键字]])TODO关键字时有时候你可能想跟踪任务什么时候状态发生了改变,可能还想在状态发生改变的时候记录一些附加信息. 这些信息在插入时会插入到该事项标题的后面作为最新的信息列在第一排[fn:TODO事项9]. 如果记录的附加信息太长了的话,你可能会希望把这些附加信息放入一个'抽屉'(参考[[抽屉][抽屉]])中. 要实现这一点,需要配置变量`org-log-into-drawer`--推荐使用名为`LOGBOOK`[fn:TODO事项10]的抽屉. 若你想为某个子树设置其他的抽屉方式,你可以为这个子树定义`LOG_INTO_DRAWER`属性.
+
+    Org-mode可以为每个TODO关键字定义记录时间戳和附加信息的行为. 你可以在关键字后面用括号括住`!`(表示记录时间戳)或者`@`(表示记录时间戳和附加信息).下面是一个配置的例子
+    #+BEGIN_SRC emacs-lisp
+      (setq org-todo-keywords
+        '((sequence "TODO(t)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@)")))
+    #+END_SRC
+    如果你想对配置了`@`的关键字只记录时间戳,不记录附加信息的话,只需要在提示输入附加信息的时候直接按下`C-c C-c`就行,这会提交一个空白的附加信息
+
+    在上面的例子中,你不仅定义了全局的TODO关键字,定义了它们的快捷键,而且你还指定了当事项设置为`DONE`状态的时候,记录下当时的时间戳[fn:TODO事项11]. 当事项状态改为`WAIT`或`CANCELED`的时候,会提示记录下附加信息. 注意到`WAIT`状态有一个`/!`标志,这表示当离开WAIT状态进入到一个不记录任何信息的状态的时候,记录下当时的时间戳. 也就是说,当从`WAIT`切换到`DONE`状态的时候,并不触发记录时间戳的动作,因为DONE已经被配置为记录时间戳了. 而当从WAIT切换到TODO状态的时候,WAIT状态的`/!`设置会触发记录一个时间戳的动作,因为TODO并没有配置任何记录动作
+
+    你也可以把上面的设置限定到一个buffer中,方法是在buffer某行进行如下设置
+    #+BEGIN_SRC org
+      #+TODO: TODO(t) WAIT(w@/!) | DONE(d!) CANCELED(c@)
+    #+END_SRC
+
+    如果只想为某个子树或者某一个事项定义记录动作,你需要为改子树或者事项定义`LOGGING`属性. 如果你定义了非空的`LOGGING`属性,那么原先的记录动作的设置会被清空. 在配置`LOGGING`属性的时候,你可以使用`STARTUP`关键字(例如`lognotedone`或`logrepeat`).也可以明确指定为每个状态指定不同的记录设置(例如`TODO(!)`). 下面是一个例子
+    #+BEGIN_SRC org
+      * TODO Log each state with only a time
+        :PROPERTIES:
+        :LOGGING: TODO(!) WAIT(!) DONE(!) CANCELED(!)
+        :END:
+      * TODO Only log when switching to WAIT, and when repeating
+        :PROPERTIES:
+        :LOGGING: WAIT(@) logrepeat
+        :END:
+      * TODO No logging at all
+        :PROPERTIES:
+        :LOGGING: nil
+        :END:
+    #+END_SRC
+*** 跟踪你的习惯
+    Org可以用来追踪习惯的一致性,这里所谓的"习惯"指的是拥有下列特征的待办事项.
+    1. 通过配置变量`org-modules`,启用了`habits`模块
+    2. 是一个未完成的任务,有一个未完成的状态标示该任务有下一步的行动
+    3. `STYLE`属性值设置成了`habit`
+    4. 该事项带有规划日期,而且规划日期中可以有`.+时间间隔`用来表示两次重复之间的间隔. `++时间间隔`表示该习惯有时间上的约束(比如,必须在周末完成),`+时间间隔`则表示改习惯不是一个经常性的事项,它可以在之前积压未办之事,然后在未来补完它(比如补写周报)
+    5. 改习惯也可以使用类似`.+2d/3d`这样的符号标示最小/最大的间隔时间. `.+2d/3d`的意思是,你希望至少每三条做一次这个工作,但是最多每两天做一次这个工作
+    6. 你最好为完结状态设置记录行为(参考[[跟踪任务状态][跟踪任务状态]]),这样会保留一些历史数据,这些历史数据可以以连线图的方式展现出来. 你不是必须要这样做,但是由此产生的连线图的意义就不大了.
+
+       为了给你一个直观的感受,下面展示一个带有历史数据的习惯的例子
+       #+BEGIN_SRC org
+       ** TODO Shave
+          SCHEDULED: <2009-10-17 Sat .+2d/4d>
+          - State "DONE"       from "TODO"       [2009-10-15 Thu]
+          - State "DONE"       from "TODO"       [2009-10-12 Mon]
+          - State "DONE"       from "TODO"       [2009-10-10 Sat]
+          - State "DONE"       from "TODO"       [2009-10-04 Sun]
+          - State "DONE"       from "TODO"       [2009-10-02 Fri]
+          - State "DONE"       from "TODO"       [2009-09-29 Tue]
+          - State "DONE"       from "TODO"       [2009-09-25 Fri]
+          - State "DONE"       from "TODO"       [2009-09-19 Sat]
+          - State "DONE"       from "TODO"       [2009-09-16 Wed]
+          - State "DONE"       from "TODO"       [2009-09-12 Sat]
+          :PROPERTIES:
+          :STYLE:    habit
+          :LAST_REPEAT: [2009-10-19 Mon 00:36]
+          :END:
+       #+END_SRC
+       这个例子的意思是:我希望最多每两天,最少每4天做一次这个事情(通过`SCHEDULED`日期和重复的时间间隔给定了). 假设今天是15号,那么在agenda中,该习惯会在17号(也就是2天之后)的地方显示生效. 在19号(也就是4天之后)的地方实效
+
+       把习惯用折线图展示出来可以显示在过去你坚持这项习惯的情况如何. 这个折线图显示了过去三个星期每天该习惯的完成情况,每天都根据完成情况用不同的颜色显示出来. 这些颜色有:
+       * 蓝色 ::
+	       表示当天任务没有完成
+       * 绿色 ::
+	       表示当天任务已经完成
+       * 黄色 ::
+	       表示任务在第二天就会过期了
+       * 红色 :: 
+	       表示工作在当天已经延误了
+
+	       另外除了用颜色标注每天的任务完成情况之外,弱于哪些任务在当天已经完成的任务会用星号标注出来. 会用感叹号标注当前日期出来.
+
+	       org提供很多变量来改变agenda显示habit的方式
+	       * org-habit-graph-column ::
+		    设定统计图从那一列开始画. 由于统计图会覆盖该列上的所有文本,因此最好保持你的habit标题简洁明了.
+	       * org-habit-preceding-days :: 
+		    指定从几天前开始统计数据
+	       * org-habit-following-days ::
+		    指示统计到几天之后的数据
+	       * org-habit-show-habits-only-for-today :: 
+		    如果为非nil值的话,表示只在当天的agenda视图中显示habits. 默认情况下是设置为true的
+
+	       最后,在agenda视图中按下`K`键会暂时让habit隐藏掉. 按'K'之后又会让habit显示出来. 它们也受到tag过滤的影响,例如你可以设定habit只能在某种特定的情况下才能被标记为完成.
+** 优先级
+   如果你经常使用Org-mode来进行任务安排的话,就应该会发现对各项任务分配优先级是很有必要的,方法是在TODO事项的标题前放上优先级标识(` /priority cookie/ `),像这样:
+   #+BEGIN_SRC org
+     ,*** TODO [#A] Write letter to Sam Fortune
+   #+END_SRC
+   
+   默认情况下,Org-mode支持从高到低三个优先级,分别表示为`A`,`B`,`C`. 如果某个任务没有分配优先级,则被认为是`B`优先级. 为任务分配优先级的意义仅仅在于在agenda视图(参考[[周/日agenda][周/日agenda]])中可以依照优先级对任务进行排序. 通过定义变量`org-priority-faces`,你可以为不同的优先级分配不同的显示风格(face)
+
+   优先级标识可以放在任何大纲节点前,而不一定要放在TODO事项前
+   * C-c , ::
+	      设置当前任务的优先级(`org-priority`). 执行该命令后,会提示你输入代表优先级的`A` `B` `C`. 如果你输入的是<SPC>则标识去除任务中的优先级标识. 若你在timeline或agenda视图中时,则可以使用`,`命令来改变优先级.(参考章节[[Agenda buffer命令][Agenda buffer命令]]).
+   * S-<up> (org-priority-up) / S-<down> (org-priority-down) :: 
+	提升/降低当前任务的优先级[fn:TODO事项12]. 需要注意的时,这些键也同样可以用来改变时间戳(参考章节[[创建时间戳][创建时间戳]]). 同样这些按键也可能与`shift-selection-mode`相互冲突,具体情况(参考[ Packages that lead to conflicts with Org mode][与Org-mode冲突的包])
+
+   通过设置变量`org-highest-priority`,`org-lowest-priority`和`org-default-priority`的值,你可以自定义优先级的区间. 若想对某个文件设置优先级区间,你可以像下面那样设置(准照最高优先级,最低优先级,默认优先级的顺序来设置,同时请确保最高优先级在字母表上要比最低优先级靠前)
+   #+BEGIN_SRC org
+     #+PRIORITIES: A C B
+   #+END_SRC
+** 划分子任务
+   将一件很复杂的任务分解为简单一些,更易管理的子任务是很有必要的. 你可以在任务事项下面创建新的子树大纲(子任务作为子树的各节点)的方式来表达这种分层关系[fn:TODO事项13]. 若你想在父任务上显示子任务完成的情况,可以在父任务标题的任何地方插入`[/]`或`[%]`. 每当有子任务被标识为已完结状态之后,这两个标识会被更新为子任务的完成进度,在这两个标识上按下`C-c C-c`也能够强制更新这两个标识的信息.下面是一个例子:
+   #+BEGIN_SRC org
+     * Organize Party [33%]
+     ** TODO Call people [1/2]
+     *** TODO Peter
+     *** DONE Sarah
+     ** TODO Buy food
+     ** DONE Talk to neighbor
+   #+END_SRC
+
+   如果一个任务标题下面既有check列表,也有代办的TODO子任务,那么org就不清楚应该怎么统计子任务的完成情况了. 这时需要设置属性`COOKIE_DATA`的值为`checkbox`或者`todo`来明确指示统计时以哪个为准
+
+   如果你想在统计子任务完成情况的时候,不是仅仅统计直接下属的子任务的情况,而是统计所有层级的下属子任务,那么你需要配置变量`org-hierarchical-todo-statistics`. 如果你只是对某个特定的父任务有这种需求,那么为该父任务设置`COOKIE_DATA`属性,并且确保该属性的值包含有`recursive`. 下面是一个例子
+   #+BEGIN_SRC org
+     * Parent capturing statistics [2/20]
+       :PROPERTIES:
+       :COOKIE_DATA: todo recursive
+       :END:
+   #+END_SRC
+
+   如果你希望父任务在所有子任务都标记为完结状态后,自动也切换到完结状态,你可以用下面所示的配置:
+   #+BEGIN_SRC emacs-lisp
+     (defun org-summary-todo (n-done n-not-done)
+       "Switch entry to DONE when all subentries are done, to TODO otherwise."
+       (let (org-log-done org-log-states)   ; turn off logging
+         (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
+     
+     (add-hook 'org-after-todo-statistics-hook 'org-summary-todo)
+   #+END_SRC
+
+   当然,你也可以使用[[复选框][复选框]]列表代替子任务的作用
+** 复选框
+   列表[fn:TODO事项14](参考[Plain lists][纯文本列表])的每一个项目都可以以`[ ]`开头变成一个复选框.这个特性与TODO事项相类似,但是更轻量些.复选框不包含在全局的TODO列表内,所以经常被用于区分一些较小型的简单步骤.或者用来作为待购清单来使用.要切换checkbox的状态(完成/未完成状态),需要按下`C-c C-c`,或者使用鼠标点击(多亏了Piotr Zielinski的`org-mouse.el`)
+
+   下面是一个复选框列表的例子
+   #+BEGIN_SRC org
+     * TODO Organize party [2/4]
+       - [-] call people [1/3]
+         - [ ] Peter
+         - [X] Sarah
+         - [ ] Sam
+       - [X] order food
+       - [ ] think about what music to play
+       - [X] talk to the neighbors
+   #+END_SRC
+   
+   复选框具有继承的特性,因此如果一个具有子复选框的话,对子复选框的完成状态进行切换的时候,父复选框也会自动根据是没有/部分/全部子复选框完成状况来做出相应的改变
+
+   在上面例子中,第一行和第二行的`[2/4]`和`[1/3]`展示了一共有多少个复选框,其中多少个复选框一件完成了. 这使得你不用展开就能知道还剩下多少个复选框没有完成. 这种统计信息的展示可以放在标题或者文本列表的任何地方,而且它只会统计直接子任务的完成情况[fn:TODO事项15]. 为了得到这种统计信息的展示,你需要自己输入`[/]`或`[%]`. 如果你使用的是`[/]`,那么你会得到`[n/m]`这样的展示方法(n表示已完成数,m表示未完成数). 如果你输入的是`[%]`,那么你会得到一个百分比的展示. 若在标题的子树下,既有TODO事项,又有复选框,那么展示的可能为TODO事项的统计结果(若触发改变的是由于子TODO事项的状态改变而引起的)也可能是复选框的统计结果(若触发改变的结果是由于复选框的状态改变引起的),这样就显得很混乱. 要解决这个问题,设置该标题的`COOKIE_DATA`属性值为`checkbox`或者`todo`即刻
+
+   如果在当前的大纲节点上加了`ORDERED`属性,这就告诉org复选框必须从上到下一个一个的被完结, 否则会有报错.
+
+   关于复选框的命令有以下这些:
+   * C-c C-c (org-toggle-checkbox) ::
+	切换光标所在复选框的完结状态. 如果加了一个前置参数(也就是用按键`C-u C-c c-c`)则增加/移除复选框标志(使它在复选框和普通列表之间切换)[fn:TODO事项16], 如果加了两个前置参数(`C-u C-u C-c C-c`)则复选框的标志设为`[-]`,这种标志的意思是其为一种中间状态
+   * C-c C-x C-b (org-toggle-checkbox) :: 
+	切换光标所在复选框的完结状态. 如果加了两个前置参数(`C-u C-u C-c C-c`)则复选框的标志设为`[-]`,这种标志的意思是其为一种中间状态
+	- 如果存在一个选择域,则切换该选择区域的第一个复选框的完结状态,同时选择区域的其他复选框的完结状态都改为以第一个复选框的完结状态为准. 如果调用该命令时带了一个前置参数(`C-u C-c C-x C-b`)则增加/删除该区域中所有事项的复选框标志
+	- 如果对一个标题进行该操作, 则切换该标题到下一标题间的所有复选框的状态(不是整个子树)
+	- 如果没有选择区域,则切换光标所在的复选框的状态
+   * M-s-<RET> (org-insert-todo-heading) ::
+	插入一个新的复选框,这只有当光标处于普通列表中时才有效(参考[[列表][列表]])
+   * C-c C-x o (org-toggle-ordered-property) :: 
+	切换是否具有`ORDERED`属性. 如果你希望能够以tag的形式来最终`ORDERED`属性的值,你可以设置变量`org-track-ordered-property-with-tag`
+   * C-c # (org-update-statistics-cookies) :: 
+	更新当前大纲项的统计信息, 若使用了`C-u`前缀,则更新整个文件的统计信息. 当你用`C-c C-c`切换一个复选框的完结状态或者用`M-S-<RET>`新增加一个复选框的时候,会自动更新复选框的统计信息. 同样,当改变TODO事项的状态时,也会自动更新TODO事项的统计信息. 但是如果你删除复选框和TODO事项,或者手工增加/修改复选框和TODO事项,那你就需要手工调用这个命令,以强制同步更新统计数据
+* Tags
+  对于内容的上下文进行交叉关联和实施分类的最好的方法是给标题分配tags.Org模式支持tags.
+  每个标题都可以包含多个tag; 这些tag应该放在标题的末尾位置. tag通常由字母,汉字,数字,-和@组成. tag的前后必须被冒号包括,像这样`:work:`. 可以同时指定多个tag,像这样`:work:urgent:`. tag默认是用跟标题一样的颜色,但是加粗显示. 你也可以为特定的tag定义特定的显示风格(face),方法是配置变量`org-tag-faces`, 这跟配置TODO关键字的face的方法差不多(参考TODO关键字的显示风格)
+
+** Tag的继承特性
+   tag具有继承的特性. 如果一个标题具有某个tag,那么它的所有子标题自动继承了这个tag,例如,
+   #+BEGIN_SRC org
+     * Meeting with the French group      :work:
+     ** Summary by Frank                  :boss:notes:
+     *** TODO Prepare slides for him      :action:
+   #+END_SRC
+   上例中,最后那一行的标题虽然看起来只有一个tag,但是其实它有4个tag:`:work:`,`:boss:`,`:notes:`和`:action:`. 你也可以设置文件级的tag,这样所有该文件的标题,自动继承了这些文件级的tag. 方法为在文件中加入这样一行[fn:tags1]
+   #+BEGIN_SRC org
+     #+FILETAGS: :Peter:Boss:Secret:
+   #+END_SRC
+   
+   如果你想只限定某几个tag具有继承性,或者根本就不想让tag具有继承性,那么你可以通过配置变量`org-use-tag-inheritance`和`org-tags-exclude-from-inheritance`来实现
+
+   如果tag的继承特性被打开,那么在作tag搜索的时候,若某个父标题匹配了这次搜索,那么它的子树也同样匹配这次搜索[fn:tags2],这样的话,匹配列表恐怕就会过长. 如果你只想让子树中第一个匹配项可见,请配置变量`org-tags-match-list-sublevels`(我们不推荐这么做)
+
+   当agenda查询在试图匹配tags时使用tags或tags-todo类型时,tags的继承性是有意义的,在其它的agenda类型时,org-use-tag-inheritance是无效的.但是,你希望tags在agenda里能正确工作,这时使用tags的继承性会使筛选非常有效.可以设置org-agenda-use-tag-inheritance进行控制,默认设置包括所有的agenda类型,如果设置为nil时会加速agenda的生成.
+
+** 设置Tag  
+   你可以直接通过在标题后面输入tag的方式給标题打tag. 输入冒号之后,按下`M-<TAB>`,会提供对tag的补全. 你也可以用下面的命令来插入tag
+   * C-c C-q (org-set-tags-command) ::
+	为当前标题输入新的tag. Org-mode同时也提供补全功能,或給key设定单字符的快捷键,具体内容见下文. 在按下<RET>之后,就会插入tag,并且tag自动与`org-tags-column`代表的列对齐. 当调用时带了`C-u`前缀参数时, 当前buffer中的所有tag都会与该列对齐,这样会显得很工整. 另外,当你对标题进行升级/降级,或者改变TODO状态的时候,也会自动对齐tag的位置,参考章节[Basic TODO functionality][最基本的TODO功能]
+   * C-c C-c (org-set-tags-command) :: 
+	当光标位于标题上时,这个功能与`C-c C-q`一样.
+		
+   Org在插入tag时维护了一个tag列表. 默认情况下,这个tag列表动态的包含了当前buffer中的所有tag. 你也可以通过变量`org-tag-alist`来设置一个全局的固定的tag列表. 当然你也可以单独为一个文件设置默认的tag列表.
+   #+BEGIN_SRC org
+     #+TAGS: @work @home @tennisclub
+     #+TAGS: laptop car pc sailboat
+   #+END_SRC
+   如果你通过变量`org-tag-alist`设置了一个全局的tag列表,但是在某些文件中,又希望能够动态获取tag列表,你只需要在文件中加入一个空白的TAG选项即刻
+   #+BEGIN_SRC org
+     #+TAGS:
+   #+END_SRC
+   如果你有一些tag是每个文件都要用到的,你可以把这些tag放入变量`org-tag-persistent-alist`中,这样org文件除了具有TAGS选项所设定的tag外,还具有这个变量所定义的那些tag. 如果某个文件不想包含该变量所定义的tag,只需要在STARTUP选项行中添加:
+   #+BEGIN_SRC org
+     #+STARTUP: noptag
+   #+END_SRC
+   默认情况下,Org-mode在输入tag时提供的是标准minibuffer补全方式. 然而其实它具有另一个更快捷的tag选择方法名叫`快速tag选择法(fast tag selection)`. 它可以让你只用一个按键就可以选择/取消一个tag. 为了让该方法能够很好的工作,你需要为你最常用的tag都分配唯一的单独键. 你可以通过在Emacs配置文件中设置变量`org-tag-alist`来实现. 例如你可能在许多文件中都会用到`:@home:`这个tag,你就可以这样定义
+   #+BEGIN_SRC emacs-lisp
+     (setq org-tag-alist '(("@work" . ?w) ("@home" . ?h) ("laptop" . ?l)))
+   #+END_SRC
+   如果tag只是在当前文件中有效,你可以在文件中设置TAGS选项行像这样:
+   #+BEGIN_SRC org
+     #+TAGS: @work(w)  @home(h)  @tennisclub(t)  laptop(l)  pc(p)
+   #+END_SRC
+   插入tag时会在一个新窗口中显示可用的tag供你选择. 若你想在某个tag之后换行显示,你只需要在它之后插入`\n`即刻:
+   #+BEGIN_SRC org
+     #+TAGS: @work(w)  @home(h)  @tennisclub(t) \n laptop(l)  pc(p)    
+   #+END_SRC
+   或者你也可用写成两行
+   #+BEGIN_SRC org
+     #+TAGS: @work(w)  @home(h)  @tennisclub(t)
+     #+TAGS: laptop(l)  pc(p)
+   #+END_SRC
+   用大括号括起来的tag,相互之间只能选择一个标识,例如
+   #+BEGIN_SRC org
+     #+TAGS: { @work(w)  @home(h)  @tennisclub(t) }  laptop(l)  pc(p)
+   #+END_SRC
+   上面的例子说明了,最多只能选择`@work`,`@home`和`@tennisclub`三个之中的一个,作为tag标识. 当然多个组之间的tag可用放在一起
+   当然,别忘了,在这些配置行上按下`C-c C-c`才回使这些改动生效.
+	
+   若想在设置变量`org-tags-alist`时也表达这种组内相互排斥的tag,你需要用`:startgroup`和`:endgroup`来代替`{`和`}`. 同样的,你也可用用`:newline`来标识断行. 要把上面哪个例子中的tag设置变成全局性的,可用使用如下配置
+   #+BEGIN_SRC emacs-lisp
+     (setq org-tag-alist '((:startgroup . nil)
+                           ("@work" . ?w) ("@home" . ?h)
+                           ("@tennisclub" . ?t)
+                           (:endgroup . nil)
+                           ("laptop" . ?l) ("pc" . ?p)))
+   #+END_SRC
+	
+   如果至少有一个tag分配了快捷键,那么在按下`C-c C-c`之后会显示给你一个特殊的界面,在这里列出了继承到的tag,当前标题行所明确指定的tag和所有其他可用tag,以及这些tag的对应快捷键[fn:tags3].
+
+   按下分配給tag的快捷键会添加/删除当前行的相应tag. 如果你选择的tag刚好跟其他tag处于同一个相互排斥的组,那么其他的tag会自动被移除.
+   在这个界面中,你可以使用如下快捷键:
+
+   * <TAB> :: 
+	会在minibuffer中提示你输入tag,这个tag可用是全新的. 你也可以同时添加多个tag:只需要用冒号将它们分开就行
+   * <SPC> :: 
+	清空当前行的所有tag
+   * <RET> :: 
+	保存当前的tag修改
+   * C-g :: 
+	放弃当前的修改
+   * q :: 
+	如果`q`没有被分配給tag当快捷键,那么它跟`C-g`一样
+   * ! :: 
+        关闭相互排斥组的约束,用这个命令可用将相互排斥组的多个tag放在一起
+   * C-c :: 
+	开/闭自动退出模式,如果打开自动退出模式,则org只接收下一个tag的命令,然后就自动退出(见下文). 如果你处于expert mode下,那么这个`C-c`会显示tag选择窗口(也就是说,在expert模式下,C-c C-c默认也不显示tag选择窗口)
+
+   这些命令使得你可用用很少的按键就可以为标题分配tag. 举例来说,如果你使用了上面的配置,你可以用`C-c C-c <SPC> h l p <RET>`来清空当前行的tag,然后为当前行分配‘@home’,‘laptop’和‘pc’标签. 使用`C-c C-c w <RET>`或`C-c C-c C-c w`来将`@home`变成`@work`标签. 通过` C-c C-c <TAB> S a r a h <RET> <RET>`来为当前行分配新标签`sarah`
+
+   如果你发现你对tag的修改大多数时候只需要按一个键就可用完成,这时,你可以设置变量`org-fast-tag-selection-single-key`. 设置之后你不再需要按`<RET>`来退出快速tag选择窗口--它会在你做出第一次修改之后立即退出. 如果偶尔你需要作多处修改,你只需要按下`C-c`来取消自动退出模式即可(其实设置了`org-fast-tag-selection-single-key`之后,再按下`C-c C-c`,其效果跟`C-c C-c C-c`一样). 如果你设置该变量的值为`expert`,那么这个tag选择窗口甚至不会出现,除非你再按一次`C-c`才会出现
+** Tag层级
+   Tag可以分层定义.可以将一组Tag定义为一个Tag.组Tag可以看做其子Tag的集合.定义多个组Tag并进行嵌套使用来创建分层Tag.
+   
+   一个用例是创建分类组Tag用于对一个文档或整套文档进行节点分类.
+
+   当查找一个组Tag时,会返回所有和组内成员Tag相匹配的结果.在agenda视图中,使用组Tag进行筛选时会显示或隐藏包含成员或成员组的标题.让Tag查找和筛选变得非常灵活.
+
+   使用方括号,在组Tag和成员tag之间插入冒号来定义一个组Tag,注意,为了区分各个元素,需要在各元素间插入空格以便于Org可以正确进行语法分析.
+
+   #+BEGIN_SRC org
+       #+TAGS: [ GTD : Control Persp ]
+   #+END_SRC
+
+   这个例子里, ‘GTD’ 是组Tag,它包含两个子Tag: ‘Control’,‘Persp’. 然后把‘Control’和‘Persp’定义成组Tag就可以创建一个分层Tag:
+   #+BEGIN_SRC org
+       #+TAGS: [ Control : Context Task ]
+       #+TAGS: [ Persp : Vision Goal AOF Project ]
+   #+END_SRC
+   可以从概念上看做一个分层Tag:
+   #+BEGIN_SRC org
+       - GTD
+         - Persp
+           - Vision
+           - Goal
+           - AOF
+           - Project
+         - Control
+           - Context
+           - Task
+   #+END_SRC
+   可以使用':startgrouptag',':grouptags'和':endgrouptag'关键字在org-tag-alist里设置分层Tag:
+   #+BEGIN_SRC emacs-lisp
+        (setq org-tag-alist '((:startgrouptag)
+                              ("GTD")
+                              (:grouptags)
+                              ("Control")
+                              ("Persp")
+                              (:endgrouptag)
+                              (:startgrouptag)
+                              ("Control")
+                              (:grouptags)
+                              ("Context")
+                              ("Task")
+                              (:endgrouptag)))
+   #+END_SRC
+   如果使用与用于将互斥标签编组在一起的相同的组语法,则组中的标签可以是相互排斥的.使用大括号.
+   #+BEGIN_SRC org 
+     #+TAGS: { Context : @Home @Work @Call }
+   #+END_SRC
+   使用org-tag-alist定义组Tag时,可以使用':startgroup'和':endgroup'代替':startgrouptag'和':endgrouptag'使得成员是互斥的.
+
+   此外,组Tag的成员也可以使用正则表达式来创建动态的基于规则的所有可能的Tag结构.在组内的正则表达式必须使用大括号{ }包围起来.参考下面的例子:
+   #+BEGIN_SRC org
+     #+TAGS: [ Vision : {V@.+} ]
+     #+TAGS: [ Goal : {G@.+} ]
+     #+TAGS: [ AOF : {AOF@.+} ]
+     #+TAGS: [ Project : {P@.+} ]
+   #+END_SRC
+   查找组Tag'Project'时,将显示包含正则表达式'P@.+'的所有Tag,同样在查找‘Vision’, ‘Goal’ 和 ‘AOF’时也会匹配相应的正则表达式.例如,对于一个使用共通项目标识符的项目非常有用,如'P@2014_OrgTags'.
+   如果想临时忽略组Tag,可以使用org-toggle-tags-groups来开关此功能,绑定的按键为C-c C-x q.如果想完全禁止组Tag功能,可以将org-group-tags设置为nil.
+
+** 搜索Tag
+   一旦完善的tag系统建立起来了,我们就可以利用它将相关联的信息搜集起来
+   * C-c / m 或 C-c \ (org-match-sparse-tree) ::
+	将所有匹配tag/属性/TODO搜索的标题搜集起来放到一个sparse tree中. 如果带了`C-u`前缀参,则会忽略哪些不是TODO事项的标题(参考[Matching tags and properties][Matching tags and properties])
+   * C-c a m (org-tags-view) :: 
+	从agenda文件中搜集所有匹配tag搜索的标题. 参考章节[Matching tags and properties][匹配tag和属性]
+   * C-c a M (org-tags-view) :: 
+	从agenda文件中搜索所有匹配tag搜索的标题,但是只搜索TODO事项,并且强制进行子树的匹配(参考变量`org-tags-match-list-sublevels`)
+
+   所有这些命令都会提示你输入匹配字符串, 在输入时,允许你使用基本的布尔逻辑,比如`+boss_urgent-project1`的意思是找tag中带有`boss`和`urgent`但是没有`project1`的事项. 而`Kathy|Sally`的意思是照tag中包含`Kathy`或者`Sally`的事项. 还有其他许多的表达式可以用来匹配TODO关键字,事项的层次和属性的. 更多内容请参考[Matching tags and properties][匹配tag和属性]
+* 属性和列
+  属性其实就是一个键值对,它与org文件中的条目相关联. 属性可用设置为与Org文件中的某个特定条目,或者某棵树下的所有条目,或者整个buffer中的条目相关联.
+
+  在Org-mode中,属性有两种主要的功能. 第一个功能是类似于带值的tag. 想象一下你需要维护一个记录bug和发布版本的文档. 你可以使用类似`:release_1:`或`release_2`这样的tag来标注,或者你可以可用使用一个名叫`:Release:`的属性,但是在不同的子树中给它分配不同的值(比如`1.0`,`2.0`). 第二个功能是使用属性来实现数据库的基本功能. 例如你在记录你的CD,給它分配的属性可用是`专辑,演唱者,发布日期`等等
+
+  通过列视图(参考[[列视图][列视图]]),可用很方便的编辑和查看属性
+** 属性的语法规则
+   属性是以键值对的形式出现的. 当需要分配属性时,属性需要放入一个名为`PROPERTIES`的特殊抽屉([[抽屉][抽屉]])中.这个属性仅属于此标题并且适用于规划线, 每个属性一行,键(用冒号括起来)在前,值在后. 下面是一个例子
+   #+BEGIN_SRC org
+     * CD collection
+     ** Classic
+     *** Goldberg Variations
+         :PROPERTIES:
+         :Title:     Goldberg Variations
+         :Composer:  J.S. Bach
+         :Artist:    Glen Gould
+         :Publisher: Deutsche Grammophon
+         :NDisks:    1
+         :END:
+   #+END_SRC
+   根据变量`org-use-property-inheritance`的值的不同,属性可能具有也可能不具有继承性,详见[[属性继承][属性继承]]
+
+   你可能想设定属性`:Xyz:`只能有哪些值,你可以通过定义一个名为`:Xyz_ALL`的属性来做到这一点. `:Xyz_ALL:`是一类特殊的属性,该属性具有继承性,因此如果你在第一层条目上设置了这样的属性,它会对整个树生效. 通过约束属性的所有值,可以减少设置属性时输入错误的概率. 举个例子,要记录收集的CD,你可以预定义好出版人和碟片数量,向下面一样:
+   #+BEGIN_SRC org
+     * CD collection
+       :PROPERTIES:
+       :NDisks_ALL:  1 2 3 4
+       :Publisher_ALL: "Deutsche Grammophon" Philips EMI
+       :END:
+   #+END_SRC
+   如果你想定义一人整个文件中都有效的属性,在文件中加入这么一行:
+   #+BEGIN_SRC org
+     #+PROPERTY: NDisks_ALL 1 2 3 4
+   #+END_SRC
+   如果你想对一个已经存在的属性,添加一个值,只需要在定义时在属性名称后面附上一个`+`号. 例如下面的例子中,属性`var`的值为`foo=1 bar=2`
+   #+BEGIN_SRC org
+     #+PROPERTY: var  foo=1
+     #+PROPERTY: var+ bar=2
+   #+END_SRC
+   你不仅可以对定义的属性添加值,还能对继承过来的属性添加值. 下面的例子中,`Goldberg Variations`子树中的`genres`属性的值为`Classic Baroque`
+   #+BEGIN_SRC org
+     * CD collection
+     ** Classic
+         :PROPERTIES:
+         :GENRES: Classic
+         :END:
+     *** Goldberg Variations
+         :PROPERTIES:
+         :Title:     Goldberg Variations
+         :Composer:  J.S. Bach
+         :Artist:    Glen Gould
+         :Publisher: Deutsche Grammophon
+         :NDisks:    1
+         :GENRES+:   Baroque
+         :END:
+   #+END_SRC
+
+   需要注意的是,每个抽屉中的每个属性只能定义一行.
+   全局变量`org-global-peroperties`定义的属性被所有的Org文件中的所有条目所继承
+
+   下面有一些关于属性的命令
+   * M-<TAB> (pcomplete) ::
+	再输入冒号之后按下这个命令键,会列出当前文件可用所有属性名,可用直接用鼠标点击要加入的属性名即可
+   * C-c C-x p (org-set-property) :: 
+	设置属性. 这个命令会提示你输入要编辑的属性名称和属性值. 如果输入的新的属性名,则会新增该属性
+   * C-u M-x org-insert-drawer <RET> ::
+        在当前入口插入一个属性抽屉.Insert a property drawer into the current entry. The drawer will be inserted
+        early in the entry, but after the lines with planning information like deadlines.
+   * C-c C-c (org-peroperty-action) :: 
+	在属性抽屉中按下这个命令键,会显示出各种操作属性的命令,可进行设置属性,删除属性,全局删除属性,计算属性值等操作. 具体说明见下文
+   * C-c C-c s (org-set-peroperty) :: 
+	设置当前抽屉中的的任选某个属性. 属性名和属性值都可以以计算的方式插入
+   * S-<right> (org-peroperty-next-allowed-value) 或 S-<left> (org-peroperty-previous-allowed-value) :: 
+	将光标所在的属性切换到上一个/下一个可选值
+   * C-c C-c d (org-delete-peroperty) :: 
+	删除当前抽屉中的某个属性
+   * C-c C-c D (org-delete-property-globally) :: 
+	全局删除某个属性,对当前文件中的所有条目都生效
+   * C-c C-c c (org-compute-peroperty-at-point) :: 
+	计算光标所在的属性, 
+** 特殊属性
+
+   一些特定的属性被定义用来开启Org-mode的一些特性,比如前面章节中讲到的TODO状态和优先级. 之所以提供这些特殊的属性,是为了让你可以在列视图(参考[[列视图][列视图]])中查看到这些状态,还可以在搜索时匹配这些状态. 下面列出的这些特殊属性名,不应该放入属性抽屉中.
+   #+BEGIN_EXAMPLE
+   ALLTAGS      All tags, including inherited ones.
+   BLOCKED      "t" if task is currently blocked by children or siblings.
+   CLOCKSUM     The sum of CLOCK intervals in the subtree. org-clock-sum
+                must be run first to compute the values in the current buffer.
+   CLOCKSUM_T   The sum of CLOCK intervals in the subtree for today.
+                org-clock-sum-today must be run first to compute the
+                values in the current buffer.
+   CLOSED       When was this entry closed?
+   DEADLINE     The deadline time string, without the angular brackets.
+   FILE The     filename the entry is located in.
+   ITEM The     headline of the entry.
+   PRIORITY     The priority of the entry, a string with a single letter.
+   SCHEDULED    The scheduling timestamp, without the angular brackets.
+   TAGS         The tags defined directly in the headline.
+   TIMESTAMP    The first keyword-less timestamp in the entry.
+   TIMESTAMP_IA The first inactive timestamp in the entry.
+   TODO         The TODO keyword of the entry.
+   #+END_EXAMPLE
+** 搜索属性
+
+   属性搜索的命令和tag搜索(参考章节[[搜索Tag][搜索Tag]])的命令一样的
+   * C-c / m 或 C-c \ (org-match-sparse-tree) ::
+	将所有匹配tag搜索的标题搜集起来放到一个sparse tree中. 如果带了`C-u`前缀参,则会忽略哪些不是TODO事项的标题
+   * C-c a m (org-tags-view) :: 
+	从agenda文件中搜集所有匹配tag/属性搜索的标题. 参考章节([[匹配标签和属性][匹配标签和属性]])
+   * C-c a M (org-tags-view) :: 
+	从agenda文件中搜索所有匹配tag搜索的标题,但是只搜索TODO事项,并且强制进行子树的匹配(参考变量`org-tags-match-list-sublevels`)
+   关于搜索串的语法参考([[匹配标签和属性][匹配标签和属性]])
+
+   还有一个搜索单个属性的命令:
+   * C-c / p
+     该命令根据属性值进行搜索匹配. 它首先提示你输入要搜索的属性名,然后是要匹配的值. 然后就会查找出所有拥有该属性并且属性值为指定值的条目. 在输入待匹配的属性值时,用`{}`括起来的值被当作是正则表达式处理.
+** 属性继承
+   属性可以具有继承性.但是默认情况下,Org-mode不打开该特性,因为它会极大地拖慢属性搜索的速度并且实用性也不大. 然而如果你觉得很有必要打开它的继承性,你可以通过设置`org-use-property-inheritance`来实现. `org-use-property-inheritance`的值为`t`表示开启继承性,为`nil`表示关闭继承性
+
+   Org-mode中也有一些属性是强制具有继承性的.
+   * COLUMNS ::
+		`:COLUMNS:`属性定义了列视图的格式(参考章节[[列视图][列视图]]). 它的继承性的意义为:定义了`:COLUMNS:`属性的层次被认为是列视图表格的开始部分.它与子树中列视图被开启的位置相互独立(independently of the location in the subtree from where columns view is turned on. )
+   * CATEGORY :: 
+		 在agenda视图中显示时,通过`:CATEGORY:`属性设置的类别对整个子树都有效
+   * ARCHIVE :: 
+		在归档时有用,`:ARCHIVE:`属性定义了整个子树中的归档位置(参考章节[[移动tree到另一个归档文件中][移动tree到另一个归档文件中]])
+   * LOGGING :: 
+		`:LOGGING:`属性为条目或子树定义了记录日志的设置情况(参考章节[[跟踪任务状态][跟踪任务状态]])
+** 列视图
+   要查看和编辑一个大纲树中的属性,有一个很好的方法,那就是列视图. 在列视图中,每个大纲节点都被转换为表格中的一行. 各条目的属性就是表格中的列. Org-mode并不实际修改buffer,而只是通过在标题上多现实出一个表格结构体的方式实现列视图的. 因此,即使标题被转换成了表格的行了,但是你依然可以切换大纲树的可视性. 例如,你通过切换到目录(CONTENTS)视图模式(通过`S-<TAB> S-<TAB>`切换,若在列视图中,则直接按`c`即可),得到一个紧凑的概况表格. 这时,你依然可以打开,阅读和编辑每个标题下面的各个条目. 你也可以在执行sparse树命令之后再切换到列视图,通过这种方式,你可以在表格中只现在筛选出来的内容. 你也可以在[[Agenda视图][agengda视图]]中切换成列显示方法,这样你可以在表格中同时显示多个文件中的筛选内容.
+*** 定义列
+    要想使用列视图,先得定义列. 这是通过定义列格式行(column format line)的方式来进行的
+**** 列定义的范围
+     要定义整个文件范围的列格式,使用类似下面的行
+     #+BEGIN_SRC org
+         #+COLUMNS: %25ITEM %TAGS %PRIORITY %TODO
+     #+END_SRC
+
+     如果只想对某颗树的范围内定义列格式,对这棵树的最顶层节点添加`:COLUMNS:`属性,例如
+     #+BEGIN_SRC org
+       ** Top node for columns view
+          :PROPERTIES:
+          :COLUMNS: %25ITEM %TAGS %PRIORITY %TODO
+          :END:
+     #+END_SRC
+
+     `:COLUMNS:`属性具有继承性,因此你可以在上层为各子层定义足够普遍的格式定义,然后在编辑更深层次时定义更特化的格式定义
+**** 列属性
+     列的定义式中可以包含有列的属性. 一般来说列的定义式看起来是这样做的
+     #+BEGIN_SRC org
+       %[width]property[(title)][{summary-type}]
+     #+END_SRC
+     除了百分号和属性名之外,所有的都是可选的. 各部分的意思如下所示[fn:属性和列1][fn:属性和列2][fn:属性和列3]
+     #+BEGIN_EXAMPLE
+       width           整型,代表了列的宽度,如果忽略则由org自动决定
+                       
+       property        该列所表示的属性,可以是上文提到的哪些特殊属性
+                       
+       title           列的标题,如果忽略,则会使用属性名代替
+                       
+       {summary-type}  总和的类型,如果指定了,那么父节点的列值由其下子节点的值计算得到
+                       支持的总和类型包括:
+                       {+}       Sum numbers in this column.
+                       {+;%.1f}  Like ‘+’, but format result with ‘%.1f’.
+                       {$}       Currency, short for ‘+;%.2f’.
+                       {min}     Smallest number in column.
+                       {max}     Largest number.
+                       {mean}    Arithmetic mean of numbers.
+                       {X}       Checkbox status, ‘[X]’ if all children are ‘[X]’.
+                       {X/}      Checkbox status, ‘[n/m]’.
+                       {X%}      Checkbox status, ‘[n%]’.
+                       {:}       Sum times, HH:MM, plain numbers are hours.
+                       {:min}    Smallest time value in column.
+                       {:max}    Largest time value.
+                       {:mean}   Arithmetic mean of time values.
+                       {@min}    Minimum age (in days/hours/mins/seconds).
+                       {@max}    Maximum age (in days/hours/mins/seconds).
+                       {@mean}   Arithmetic mean of ages (in days/hours/mins/seconds).
+                       {est+}    区间的总和
+       
+     #+END_EXAMPLE
+     需要注意的是,一个属性只能有一种总和类型. 低层列当涉及到相同的属性时,会显示一样的总和信息.
+
+     `est+`这种总和类型需要多做一些说明. 它常常用来合计那些范围数据. 例如你在评估一项任务的时候可能不会说就是5天搞定,相反你可能会说大概5-6天的时候能搞定,甚至如果你对这个任务一无所知的化可能估计要1-10天才能搞定. 这两种区间平均来说都是5.5天搞定,但是第一种表达明显更精确一点.
+	 
+     当在计算这种区间的的总和时,一般的做法是把各区间的最低值和最高值相加形成一个区间,然而这个区间往往跨度太大而没什么用. `est+`则不采用这种计算方法. 它会计算各区间的平均值和方差,并根据总和生成一个最终估计. 举个例子, 假设你有10项任务,每项任务估计都要话0.5-2天才能昨晚. 如果采用一般的方法直接累计的结果是完成这10项任务需要花5-20天的时间. 然而如果使用`est+`这种计算方式则估计出值为10-15天,这个值明显更真实一些.
+
+     下面是一个完整的列定义的例子.[fn:属性和列4]
+     #+BEGIN_SRC org   
+         :COLUMNS:  %25ITEM %9Approved(Approved?){X} %Owner %11Status %10Time_Estimate{:} %CLOCKSUM_T
+         :Owner_ALL:    Tammy Mark Karl Lisa Don
+         :Status_ALL:   "In progress" "Not started yet" "Finished" ""
+         :Approved_ALL: "[ ]" "[X]"
+     #+END_SRC
+     第一列`%25ITEM`的意思是取条目(例如标题)的前25个字节为内容. 基本上你在定义列定义时都应该以`ITEM列`开头. 其他的列定义部分则定义了一个名为`Owner`的列,该列限定了几个可选值. 定义了一个名为`Status`的列并定义了4个可选值, 还有放置复选框的列`Approved`. 若`%`之后没有定义列宽,则列宽会刚好足够显示所有的值. `Approved`列有一个被修改过的标题(`Approved?`,这里有个问号). 对于列`Time_Estimate`会自动累计时间段,格式为`HH:MM`, 而对于列`Approved`来说,如果所有的子节点都check过了,则会显示一个`[X]`表示完结状态. `CLOCKSUM_T`列比较特殊,它列出子树中的CLOCK间隔时间的总和
+*** 使用列视图
+    + 开/关列视图
+      * C-c C-x C-c (org-columns) ::
+	   打开列视图模式. 如果执行命令时光标在文件第一个标题上面,那么整个文件都会开启列视图模式,列视图现实时是参照`#+COLUMNS`的定义来现实的. 如果光标是在大纲内部的化,命令会从改点开始往下搜索所有子树,查找`:COLUMNS:`属性. 当找到一个`:COLUMNS:`属性后,会为以带有该属性的条目为起点的子树建立列视图表格. 如果没有找到`:COLUMNS:`属性,那么会以光标所在条目为起点的子树建立列视图,其参照的格式为`#+COLUMNS`行或变量`org-columns-default-format`中的定义
+      * r (org-columns-redo) :: 
+	   刷新列视图,让它反应最近的修改
+      * g (org-columns-redo) :: 
+	   跟`r`一样
+      * q (org-columns-quit) :: 
+	   退出列视图
+    + 编辑值
+      * <left> <right> <up> <down> ::
+	   在列视图中的域之间跳转
+      * S-<left> /S-<right>  :: 
+	   切换域中的值为下一个/上一个可能的值,因此你必须要为该属性定义好可选的值
+      * 1...9,0 :: 
+		   直接选择第N个可选值,0表示选择第10个可选值
+      * n (org-columns-next-allowed-value) /p (org-columns-previous-allowed-value) :: 
+	   跟S-<left> /S-<right>一样
+      * e (org-columns-edit-value) :: 
+	   编辑光标所在的属性值.
+      * C-c C-c (org-columns-set-tags-or-toggle) :: 
+	   当光标处于复选框处时,切换它的勾选状态
+      * v (org-columns-show-value) :: 
+	   查看属性的完整值,这在当列宽度比值宽度要小的时候很有用
+      * a (org-columns-edit-allowed) :: 
+	   编辑该属性的可选值. 如果之前就已经设定了可选值,那么修改过的值就存储在之前设定可选值的位置.否则的话新的可选值会记录在当前列视图的第一个条目处.
+    + 修改表列视图格结构
+      * < (org-columns-narrow) / > (org-columns-widen) ::
+	   缩小/放大列的宽度
+      * S-M-<right> (org-columns-new) ::
+	   在当前列的左边插入一行新列
+      * S-M-<left> (org-columns-delete) :: 
+	   删除当前列
+*** 捕捉列视图
+    由于列视图并不正真修改buffer,它只是一种显示方式而已,因此它不能直接被导出或者被打印出来. 如果你需要捕获列视图的内容,你需要定义`columnview`动态区块(dynamic block)(参考[Dynamic blocks][Dynamic blocks]). 这种动态区块的框架类似于这样的:
+    #+BEGIN_SRC org
+      * The column view
+      #+BEGIN: columnview :hlines 1 :id "label"
+      
+      #+END:
+      
+    #+END_SRC
+	
+    定义动态区块时可以使用以下这些参数:
+    * :id ::
+	   这是最重要的参数. 因为动态区块所处的位置跟要捕获的列视图的位置很可能不一致,这就要求用一种方法来定义那部分的列视图需要被捕获. 这个参数有4个值
+	     #+BEGIN_EXAMPLE
+    local     use the tree in which the capture block is located
+    global    make a global view, including all headings in the file
+    "file:path-to-file"
+	      run column view at the top of this file
+    "ID"      call column view in the tree that has an :ID:
+	      property with the value label.  You can use
+	      M-x org-id-copy to create a globally unique ID for
+	      the current entry and copy it to the kill-ring.
+	     #+END_EXAMPLE
+    * :hlines :: 
+	   如果为`t`,则表示每一行后面都插入一条横线. 若设置为数字N,则表示对于所有层级<=N的标题,在标题前插入一条横线
+    * vlines :: 
+	   若设置为`t`,则表示强制用竖线分隔各属性列
+    * :maxlevel :: 
+	   若设置为数字N,表示不捕捉层级在N级以下的条目
+    * :skip-empty-rows :: 
+	   若设置为`t`,则会跳过那些除了`ITEM`属性列外,其他属性列都是空值的行
+    * :indent ::
+	   当设置为non-nil, 按照自身的等级对项目字段进行对齐. 
+
+		 下面还有一些命令是用来插入或更新动态区块(dynamic block)的
+		 * C-c C-x i (org-insert-columns-dblock) ::
+		      插入一个dynamic block,你需要输入要捕获的列视图的范围或ID
+		 * C-c C-c / C-c C-x C-u (org-dblock-update) :: 
+		      更新光标所在的dynamic block. 光标的位置需要在dynamic block的`#+BEGIN`这一行
+		 * C-u C-c C-x C-u (org-update-all-dblocks) :: 
+		      更新所有的dynamic blocks(参考[Dynamic blocks][Dynamic blocks]). 当你在一个buffer中有多个dynamic block时很有用
+
+		 你可以在列视图表格中插入公式并且你可以在表格前插入绘图说明--这些操作会随着block的更新而一起更新. 如果表格后面有用`#+TBLFM:`定义计算公式,那么这些公式也会随着block的更新而重新计算
+
+		 另一个捕获和处理属性值的方法是使用Eric Schulte的`org-collector.el`,这是一个第三方包[fn:属性和列5]. 它提供了大量的API来获得某个条目或者某个范围的属性. 并且可以使用任意的Lisp表达式来处理这些属性值然后再插入到表格或者动态区块(dynamic block)中去
+** 属性API
+   有大量的API提供来获取和修改属性. Emacs Lisp程序员可以使用这些API来编辑属性或实现与这些属性相关的特性. 更多信息参考[ Using the property API][使用属性API].
+
+* Footnotes
+
+
+[fn:TODO事项1] 当然,你可以创建一个只包含TODO事项列表的文档,但这并不是必须的
+
+[fn:TODO事项2] 改变这个变量之后,需要重启Org mode才能生效
+
+[fn:TODO事项3] 这一点对于timeline和agenda缓存区中的t命令也适合
+
+[fn:TODO事项4] 除了@^!(这几个字符有特殊的意义)以外其它的字符都是可用的
+
+[fn:TODO事项5] 如果你不想区分tag和todo状态的话,通过配置变量`org-fast-tag-selection-include-todo`可以让你在改变tag的时候自动改变TODO状态(参考章节[#Setting tags][设置tag]).注意,这意味着你需要为两组关键字分配相同的快捷键
+
+[fn:TODO事项6] Org-mode只在读入文件的时候才会去解析这些配置行. 在以`#+`开头的行按下`C-c C-c`的作用是为当前buffer重启一次Org-mode
+
+[fn:TODO事项7] 对应的文件内设置是#+STARTUP: logdone
+
+[fn:TODO事项8] 对应的文件内设置是#+STARTUP: lognotedone
+
+[fn:TODO事项9] 参考变量`org-log-states-order-reversed`
+
+[fn:TODO事项10] 注意 LOGBOOK抽屉按<SPC>会展开,在agenda视图中要显示一个入口请使用C-u <SPC>来保持折叠状态.
+
+[fn:TODO事项11] 当你设置了STARTUP参数`org-log-done`,同时又为状态设置了记录动作的时候,就有可能出现连续记录了两次时间戳的情况. 然而,即使你两边都配置了记录附加信息的动作,org也不会提示你输入两次附加信息.为状态单独设置的记录动作会优先执行.
+
+[fn:TODO事项12] 另见选项`org-priority-start-cycle-with-default`
+
+[fn:TODO事项13] 如果你希望全局的TODO列表中不现实子任务,参考`org-agenda-todo-list-sublevels`
+
+[fn:TODO事项14] 默认不包括描述列表在内. 但是通过修改`org-list-automatic-rules`你也可以允许描述列表成为复选框
+
+[fn:TODO事项15] 如果你希望统计的时候统计所有层次的下级复选框而不仅仅是直接子复选框,那你需要修改变量`org-hierarchical-checkbox-statistics`
+
+[fn:TODO事项16] 如果在列表的第一行使用`C-u C-c C-c`,而刚好这一行事项没有复选框标识. 则会给该列表所有事项都加上复选框的标识
+
+[fn:tags1] 就跟其他文件内设置一样,按`C-c C-c`使这行设置生效
+
+[fn:tags2] 只有在搜索不涉及到包括属性在内的复杂匹配模式的情况下才成立(参考[[搜索属性][搜索属性]])
+
+[fn:tags3] 如果tag没有明确配置快捷键,那么org会自动給它们分配快捷键
+
+[fn:属性和列1] If more than one summary type apply to the property, the parent values are computed according to the first of them.
+
+[fn:属性和列2] A time can also be a duration, using effort modifiers defined in org-effort-durations, e.g., ‘3d 1h’. If any value in the column is as such, the summary will also be an effort duration.
+
+[fn:属性和列3] An age is defined as a duration since a given time-stamp (see Section 8.1 [Timestamps], page 73). It can also be expressed as days, hours, minutes and seconds, identified by ‘d’, ‘h’, ‘m’ and ‘s’ suffixes, all mandatory, e.g., ‘0d 13h 0m 10s’.
+
+[fn:属性和列4] 注意,在定义列格式时,必须写在同一行中
+
+[fn:属性和列5] 也就是说它不属于Emacs内置的一部分(访问http://orgmode.org)
+
+

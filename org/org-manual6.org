@@ -1,0 +1,1710 @@
+* 导出
+
+   有时,您可能想要漂亮地打印您的笔记,在网络上发布,甚至不使用org与他人共享. 在这些情况下,可以使用org导出设施将文档转换为各种其他格式,同时保留尽可能多的结构(参见第2章[文档结构],第6页)和标记(参见第11章[标记],第128页).
+
+   负责这种转化的库称为后端. org带有以下的库:
+     - ascii (ASCII 格式)
+     - beamer (L ATEX Beamer 格式)
+     - html (HTML 格式)
+     - icalendar (iCalendar 格式)
+     - latex (L ATEX 格式)
+     - md (Markdown 格式)
+     - odt (OpenDocument Text 格式)
+     - org (Org 格式)
+     - texinfo (Texinfo 格式)
+     - man (Man page 格式)
+       
+
+   更多的可以在contrib/目录中找到(参见第1.2节[安装],第2页)或Emacs打包系统[fn:exporting1].
+
+   默认情况下,加载以下5个后端:ascii,html,icalendar,latex和odt. 其他需要特别加载,无论是通过自定义组织导出后端,或通过要求相关联的库,例如,
+
+   #+BEGIN_SRC elisp
+   (require 'ox-md)
+   #+END_SRC
+
+   最终,您可以使用orgtbl-mode或orgstruct-mode这些设施在外部设备中,您可以使用Org语法创建表和列表,并将其转换到位到目标语言.
+
+** 导出调度器
+
+   导出相关任务的主要入口点是调度员,一个分层菜单可以选择导出格式并切换导出选项[fn:exporting2]
+
+   * C-c C-e (org-export-dispatch)
+
+      发送导出和发布命令. 当用C-u前缀参数调用时,在保留切换选项的同时,重复上一次导出命令. 如果当前缓存没有变化,并且子树导出被激活,命令将会有相同的子树.
+
+   通常输出整个输出,但如果只有一个有效区域将导出.
+
+   可以切换几个导出选项(参见第12.2节“导出设置”,第136页)导出调度员具有以下组合键:
+
+   * C-a
+
+     切换异步导出. 异步导出使用配置有指定初始化文件的外部Emacs进程.
+
+     异步输出时,输出不显示,但存储在一个名为“导出堆栈”的地方. 该堆栈可以通过调用来显示调度员使用双C-u prefx参数,或使用调度程序的＆键菜单.
+
+     要使此行为成为默认值,请自定义变量org-export-in后台.
+
+   * C-b
+
+     切换仅限身体的导出. 其效果取决于后端使用. 通常,如果后端有一个标题部分(如<head> ... </ head>在HTML中后端),只有body-body导出不会包含此头.
+
+   * C-s
+
+     切换子树导出. 顶部标题将成为文档标题.您可以通过设置org-exportinitial-scope来更改此选项的默认状态.
+
+   * C-v
+
+     切换可见的导出. 只导出当前可见的文本,即,没有隐藏的大纲可见性在缓存.
+
+** 导出设置
+
+   导出选项可以设置:全局变量; 对于一个个体来说,通过变量通过设置进行设置(参见第15.6节[内置设置],第225页),通过设置单个关键字,或通过#+OPTIONS关键字以紧凑形式指定它们;或通过设置属性为树(请参见第7章[属性和列],第64页). 选项设置在特定级别覆盖选项设置在更一般的级别.
+
+   buffer内部设置可以出现在任何地方,直接或间接地通过一个包含使用'#+SETUPFILE:filename'语法的电影. 选择关键字集可以从导出调度员插入一个特定的后端(参见第12.1节[导出调度程序],第135页)使用插入模板命令按#. 至单独插入关键字,确保关键字正确的好方法是键入#+然后使用M-<TAB>完成.
+
+   每个后端可以使用的导出关键字及其等效的全局变量,包括:
+
+      'AUTHOR'          文档作者(user-full-name).
+      'CREATOR'         负责产出生成的实体(org-export-creator-string).
+      'DATE'            日期或时间戳[fn:exporting3].
+      'EMAIL'           邮箱地址(user-mail-address).
+      'LANGUAGE'        用于翻译某些字符串的语言(org-export-defaultlanguage). 例如'#+ LANGUAGE:fr'会告诉Org翻译File(英文)在clocktable中进入Fichier(法国).
+      'SELECT_TAGS'     选择要导出的树的标签(org-export-select-tags). 默认值价值是:export:. 在标有:export:的子树中,您仍然可以排除条目:noexport :(见下文). 当头条选择性地导出时与:export:任何地方在一个fle,文字前frst标题被忽略.
+      'EXCLUDE_TAGS'    从导出中排除树的标记(org-export-exclude-tags). 默认值为:noexport :. 具有:noexport:标签的条目将无条件地从导出中排除,即使它们具有:export:标签. 码排除子树中包含的块仍将在导出期间执行虽然子树没有导出.
+      'TITLE'           要显示的标题. 您可以使用多个这样的关键字长标题.
+   #+ OPTIONS关键字是一个紧凑的[fn:exporting4]表单,可以识别以下参数:
+
+      ':    切换智能报价(org-export-with-smart-quotes). 激活时,双引号对根据所使用的语言成为主要引号.在里面,成对的单引号成为二次引号. 其他单引号被视为撇号.
+      *:    切换强调文本(org-export-with-emphasis).
+      -:    切换特殊字符串的转换(org-export-with-special-strings).
+      ::    切换固定宽度部分(org-export-with-fixed-width).
+      <:    切换包含任何时间/日期活动/非活动标记(组织导出 - 最小化).
+      \n:   切换 line-break-preservation (org-export-preserve-breaks).
+      ^:    切换类似TEX的子语法和上标语法. 如果你写“^:{}”,'a_ {b}'将被解释,但简单的'a_b'将保留原样(org-export-withsub-superscripts).
+      arch: 配置归档树的导出. 可以设置为标题只处理标题,跳过其内容(org-export-with-archived-trees).
+      author: 切换将作者姓名包含到导出的文件(org-export-with-author)中.
+      broken-links: 决定是否在遇到内部破损时出现错误链接. 当设置为标记时,在输出(org-exportwith-broken-links)中清楚地表明问题.
+      c:    切换包含CLOCK关键字(org-export-with-clocks).
+      creator: 切换将创建者信息包含到导出文件中(org-export-with-creator).
+      d:       切换包含抽屉或列表抽屉以包含(org-export-withdrawers).
+      date:    切换包含日期到导出的文件(org-export-with-date).
+      e:       切换实体的包含(org-export-with-entities).
+      email:   切换将作者的电子邮件纳入导出文件(org-export-withemail).
+      f:       切换引用脚注(org-export-with-footnotes).
+      H:       设置导出标题的数量(org-export-headline-levels).在这个水平以下,区别对待标题. 在大多数后端,他们成为列表项.
+      inline:  切换包含inlinetasks (org-export-with-inlinetasks).
+      num:     切换部分号码(org-export-with-section-numbers). 也可以设置为数字“n”,因此只有该级别或更高的标题才能编号.最后,不管具体标题的级别如何,它的编号可以将UNNUMBERED属性设置为非零,将其禁用. 这也是一个效果副标题.
+      p:      切换导出计划信息(org-export-with-planning). “计划信息”是包含SCHEDULED: , DEADLINE: 或者CLOSED:的行,或者它们的组合.
+      pri:    切换包含优先级的Cookie (org-export-with-priority).
+      prop:   切换包含属性抽屉或列表属性以包含(org-exportwith-properties).
+      stat:   切换统计Cookie的包含(org-export-with-statisticscookies).
+      tags:   切换包含标签,也可能不在(org-export-with-tags).
+      tasks:  切换包含任务(TODO项目),可以无法删除所有任务,直到删除DONE任务或要保留的关键字列表(org-export-with-tasks).
+      tex:       配置LATEX片段和环境的导出. 它可以设置为逐字记录 (org-export-with-latex).
+      timestamp: 将创建时间切换为导入文件(org-export-timestamp-file).
+      title:     切换标题的包含(org-export-with-title).
+      toc:       切换包含目录,或设置级别限制(org-exportwith-toc).
+      todo:      将TODO关键字切换到导出的文本(org-export-withtodo-keywords)中.
+      |:         切换包含表(org-export-with-tables).
+
+   当仅导出子树时,以前的每个关键字[fn:exporting5]可以被特殊节点属性本地覆盖. 这些以“EXPORT_”开头,后跟名称他们取而代之的关键字 例如,“DATE”和“OPTIONS”关键字分别成为'EXPORT_DATE'和'EXPORT_OPTIONS'属性.
+
+   如果org-export-allow-bind-keywords不为零,则通过使用BIND关键字,Emacs变量可以在导出过程中变为buloc. 其语法为'#+ BIND:variable value'.这对于使用特定关键字无法更改的内部设置特别有用.
+
+   产生的输出的名称取自与相关联的缓存,在可能的情况下,或者否则要求你. 对于子树导出,您还可以设置EXPORT_FILE_NAME属性. 在所有情况下,只保留文件的基本名称和后端添加了指定扩展名.
+
+** 目录
+
+   目录通常直接插入到文件的第一个标题之前.默认情况下,表格的深度与标题级别的数量相同,但您可以选择较小的数字,或完全转向目录,通过将变量org-export-with-toc或一个文件基础与一行如
+
+   #+BEGIN_SRC org 
+   #+OPTIONS: toc:2       在TOC中只包括两个层次
+   #+OPTIONS: toc:nil     根本没有默认的TOC
+   #+END_SRC
+
+   如果您希望将目录移动到不同的位置,您应该使用org-export-with-toc或#+ OPTIONS转换默认表,并在所需位置插入#+ TOC:标题N.
+
+   #+BEGIN_SRC org
+   #+OPTIONS: toc:nil   没有默认的TOC
+   ...
+   #+TOC: headlines 2   在这里插入TOC,两个标题级别
+   #+END_SRC
+
+   而且,如果你附加'local'参数,那么该表仅包含当前section[fn:exporting6]的子项的条目. 在这种情况下,任何深度参数都将变得相对于当前级别.
+
+   #+BEGIN_SRC org
+   * Section
+   #+TOC: headlines 1 local  插入本地TOC,只有直接的子项
+   #+END_SRC
+
+   相同的TOC关键字也可以使用文档中的标题生成所有表(或所有列表)的列表.
+
+   #+BEGIN_SRC org
+   #+TOC: listings build a list of listings
+   #+TOC: tables build a list of tables
+   #+END_SRC
+
+   标题的标题通常在目录中确定其相应的条目.但是,可以通过相应地设置ALT_TITLE属性来指定替代标题. 然后将在建立桌子时使用它.
+
+** 包含文件
+
+   在导出过程中,您可以包含另一个文件的内容. 例如,要包括.emacs文件,您可以使用:
+
+   #+BEGIN_SRC org
+   #+INCLUDE: "~/.emacs" src emacs-lisp
+   #+END_SRC
+
+   第一个参数命名要包含的文件. 可选的第二个和第三个参数指定标记(即'example','export'或'src'),如果标记是“export”或“src”,则用于格式化内容的语言.
+
+   如果请求标记,所包含的内容将被放置在适当的块[fn:exporting7]中. 没有对包含的内容进行更改,用户有责任确保结果是有效的Org语法. 对于正在请求文字示例的标记“example”和“src”,内容将在包含之前进行代码转义.
+
+   如果没有请求标记,文本将被假定为组织模式格式,并将会正常处理.但是,文件中的脚注标签(请参见第2.10节[脚注],第16页)将在该文件的本地进行. 包含文件的内容将属于包含INCLUDE关键字的相同结构(标题,项目). 特别是,文件中的标题将成为当前部分的孩子. 可以通过提供一个附加的关键字参数:minlevel来更改该行为. 在这种情况下,包含的文件中的所有标题将被移动,所以具有最低级别的标题达到指定级别. 例如,要使文件成为当前顶级标题的下级,使用
+
+   #+BEGIN_SRC org
+   #+INCLUDE: "~/my-book/chapter2.org" :minlevel 1
+   #+END_SRC
+
+   您还可以通过使用以下方式指定行范围来包含文件的一部分:lines 关键字参数. 范围上端的行将不包括在内. 可以省略范围的开始和/或结束以使用明显的默认值.
+
+   #+BEGIN_SRC org
+   #+INCLUDE: "~/.emacs" :lines "5-10"  包含5 到 10行, 第10行除外
+   #+INCLUDE: "~/.emacs" :lines "-10"   包含 1 到 10行, 第10行除外
+   #+INCLUDE: "~/.emacs" :lines "10-"   包含从第10行到结束
+   #+END_SRC
+
+   最后,您可以使用文件链接来提取与org-link-search[fn:exporting8]匹配的对象(见第4.7节[搜索选项],第45页). 如果:only-contents属性不为零,只包含被请求元素的内容,省略属性抽屉和计划行(如果存在). the:lines关键字对于所请求的元素在本地进行操作.
+
+   #+BEGIN_SRC org
+   #+INCLUDE: "./paper.org::#theory" :only-contents t
+   #+END_SRC
+
+   使用自定义id' theory'包括标题的正文
+
+   #+BEGIN_SRC org
+   #+INCLUDE: "./paper.org::mytable"  包括命名元素
+   #+INCLUDE: "./paper.org::*conclusion" :lines 1-20
+   #+END_SRC
+
+   包括名为“conclusion”的标题的前20行.
+
+   * C-c '
+     在点访问包含文件.
+
+** 宏替换
+
+   您可以定义文本片段,使用下面的宏
+
+   #+BEGIN_SRC org
+   #+MACRO: name replacement text $1, $2 are arguments
+   #+END_SRC
+
+   该宏可以参考[fn:exporting9]
+   #+BEGIN_SRC org
+   {{{name(arg1, arg2)}}}
+   #+END_SRC
+
+
+   这些引用,称为宏,可以插入任何地方识别标签:段落,标题,诗集,表格单元格和列表. 它们也可以用于接受Org语法的关键字,例如#+CAPTION,#+TITLE,#+AUTHOR,#+DATE等等,导出后端指定.
+
+   除了用户定义的宏之外,还可以使用一组预定义的宏:
+
+   #+BEGIN_SRC org
+   {{{title}}}
+   {{{author}}}
+   {{{email}}}
+   #+END_SRC
+
+      这些宏被替换为导出时可用的信息.
+
+   #+BEGIN_SRC org
+   {{{date}}}
+   {{{date(FORMAT)}}}
+   #+END_SRC
+
+      此宏指的是#+DATE关键字. FORMAT是一个可选参数到{{{date}}}宏,仅当#+DATE是单个时间戳记时才会使用.FORMAT应该是format-time-string所理解的格式字符串.
+
+   #+BEGIN_SRC org
+   {{{time(FORMAT)}}}
+   {{{modification-time(FORMAT, VC)}}}
+   #+END_SRC
+
+      这些宏指的是导出文档的日期和时间分别到修改日期和时间. FORMAT应该是格式字符串由格式时间字符串理解. 如果第二个参数修改时间宏不为零,Org将从中检索信息版本控制系统,使用vc.el,而不是文件属性.
+
+   #+BEGIN_SRC org
+   {{{input-file}}}
+   #+END_SRC
+
+      这个宏是指输出文件的文件名,如果有的话.
+   #+BEGIN_SRC org
+   {{{property(PROPERTY-NAME)}}}
+   {{{property(PROPERTY-NAME,SEARCH-OPTION)}}}
+   #+END_SRC
+
+      此宏返回当前条目中属性PROPERTY-NAME的值.如果SEARCH-OPTION(参见第4.7节[搜索选项],第45页)引用远程条目,将被替代使用.
+
+   通过将org-hide-macro-markers设置为非零,可以使周围的括号变为不可见.
+
+   在导出开始之初就进行宏扩展.
+
+** 注释行
+
+   以零个或多个空格字符后跟一个'#'和一个空格的行开始处理为注释,注释内容不会导出.
+
+   同样,由'#+BEGIN_COMMENT'...'#+END_COMMENT'包围的区域不会导出.
+
+   最后,在条目开头的“COMMENT”关键字,但在任何其他关键字或优先级cookie之后,注释整个子树. 在这种情况下,子树不会导出,也不会执行任何代码块[fn:exporting10]. 以下命令有助于更改标题的注释状态.
+
+   * C-c ;
+
+     在条目开头切换“COMMENT”关键字.
+
+** ASCII/Latin-1/UTF-8 导入
+
+   ASCII 导出产生的组织结构图的模式文件,包含只有纯 ASCII 简单和可读性很强的版本.拉丁语-1 和 UTF-8 导出增加带有特殊字符和符号可在这些编码的文件.
+
+   导出,填充文本和有正当理由,在适当时根据设置在org-ascii-text-width的文本宽度.
+
+   链接远销在脚注般的风采,在文本中的描述性部分与之前下一个标题注释中的链接.请参阅变量org-ascii-links-to-notes的详细信息和其他选项.
+
+   *ASCII 导出命令*
+
+   * C-c C-e t a/l/u (org-ascii-export-to-ascii)
+
+     导出为 ASCII 文件.为组织结构图文件, myfile.org,ASCII 文件将myfile.txt.没有任何警告,将覆盖该文件.当原始文件是myfile.txt时,生成的文件成为myfile.txt.txt为防止数据丢失.
+
+   * C-c C-e t A/L/U (org-ascii-export-as-ascii)
+
+     导出到临时缓冲区.请创建一个文件.
+
+   *ASCII 特殊导出设置*
+
+      ASCII 导出介绍了单个关键字,类似于常规选项设置所述导出设置Section 12.2 [Export settings], page 136..
+
+      'SUBTITLE'
+        文档副标题.
+
+   *页眉和段落结构*
+   
+      在导出的版本中,第一次的三个大纲级别成为头条新闻,定义一个通用的文档结构.其他级别会被导出为列表.过渡也可以发生在不同的级别 (请参阅导出设置Section 12.2 [Export settings], page 136.).
+
+   *引用ASCII文本*
+
+      使用下面的ASCII后端结构,您可让插入文本仅仅显示:
+
+      #+BEGIN_SRC org      
+      Text @@ascii:and additional text@@ within a paragraph.
+      #+ASCII: Some text
+      #+BEGIN_EXPORT ascii
+        All lines in this block will appear only when using this back-end.
+      #+END_EXPORT
+      #+END_SRC
+
+   *ASCII 特殊属性*
+
+      ASCII后端,只可能了解一个属性, :width,其中指定的长度,以字符为单位,一个给定的水平规则.必须指定使用ATTR_ASCII线,直接前规则.
+
+      #+BEGIN_SRC org
+      #+ATTR_ASCII: :width 10
+      -----
+      #+END_SRC
+   *ASCII 特殊功能块*
+
+      此外到#+BEGIN_CENTER块 (见第11.1节[段落],第128页),就可以证明内容向左或向右有专用块以下的页面.
+
+      #+BEGIN_SRC org
+      #+BEGIN_JUSTIFYLEFT
+      It's just a jump to the left...
+      #+END_JUSTIFYLEFT
+     
+      #+BEGIN_JUSTIFYRIGHT
+      ...and then a step to the right.
+      #+END_JUSTIFYRIGHT
+      #+END_SRC
+
+** 导出Beamer
+   
+   LATEX的Beamer类允许使用LATEX和PDF处理生成高质量的演示文稿. 组织模式有特殊的支持,将组织模式文件或树转换成Beamer演示文稿.
+
+*** Beamer导出命令
+
+   * C-c C-e l b (org-beamer-export-to-latex)
+
+      导出为LaTeX文件. 对于组织文件myfile.org,LaTeX文件将是myfile.tex. 该文件将被覆盖而不发出警告.
+
+   * C-c C-e l B (org-beamer-export-as-latex)
+
+      导出到临时缓冲区.不要文件.
+
+   * C-c C-e l P (org-beamer-export-to-pdf)
+
+      导出为LATEX,然后处理为 PDF.
+
+   * C-c C-e l O
+
+      导出为LATEX,然后处理为 PDF,然后打开生成的 PDF 文件.
+
+*** Beamer特殊导出设置
+
+   Beamer导出引入了一些关键字,类似于第12.2节[导出设置],第136页中所述的一般选项设置.
+
+   'BEAMER_THEME'
+
+      Beamer主题 (org-beamer-theme).选项可以通过括号指定,例如︰
+
+      #+BEGIN_SRC org
+      #+BEAMER_THEME: Rochester [height=20pt]
+      #+END_SRC
+
+   'BEAMER_FONT_THEME'
+
+      Beamer的字体主题.
+
+   'BEAMER_INNER_THEME'
+
+      Beamer的内在主题.
+
+   'BEAMER_OUTER_THEME'
+
+      Beamer外主题.
+
+   'BEAMER_HEADER'
+
+      插入的序言部分,只是之前的 'hyperref' 设置的任意行.
+
+   'DESCRIPTION'
+
+      文档说明.默认情况下这些作为元数据使用 'hyperref' 插入.可以通过org-latex-hyperref-template配置文档元数据.说明也可以作为一部分的前部内容通过org-latex-title-command排版.如果描述是很长,您可以使用几个#+DESCRIPTION关键字,.
+
+   'KEYWORDS'
+
+      关键字定义文档的内容.默认情况下这些作为元数据使用 'hyperref' 插入.可以通过org-latex-hyperref-template配置文档元数据.说明也可以作为一部分的前部内容通过org-latex-title-command排版.如果描述是很长,您可以使用几个#+KEYWORDS.
+
+   'SUBTITLE'
+
+      文档副标题.这是排版使用格式字符串org-beamer-subtitle-format.此外可以通过org-latex-hyperref-template访问或通过org-latex-title-command的前面物作为排版.
+
+*** Beamer中的段落,框架和块
+
+   任何具有不太深层次嵌套的树原则上可以作为Beamer演示文稿导出. 标题分为三类:分段元素,框架和块.
+
+      - 标题在OPTIONS行中等于org-beamer-frame-level或H值时变为帧(参见第12.2节[导出设置],第136页).虽然,如果当前树中的标题已将BEAMER_ENV属性设置为帧或全帧,其级别覆盖变量. 整帧是具有空(忽略)标题的框架.
+      - 所有框架的子框架成为块环境.可以通过将标题的BEAMER_ENV属性[fn:exporting11]设置为适当的值来实现特殊块类型(请参阅org-beamerenvironments - 默认支持的值和组织架构环境 - 额外添加更多).
+      - 作为特殊情况,如果BEAMER_ENV属性设置为附录,注释,noteNH或再帧,标题将分别成为附录,注释(框架内或框架之间,取决于其级别),其注释与 标题忽略或\againframe命令. 在后一种情况下,BEAMER_REF属性是必须的,以引用正在恢复的帧,并忽略内容.
+        此外,带有无效环境的标题将仅将其内容插入到输出中. 此特殊值对于在帧之间进行数据或正确关闭列环境非常有用.
+
+   标题还支持BEAMER_ACT和BEAMER_OPT属性. 前者被翻译为覆盖/动作指定,或者括在方括号内的默认覆盖指定. 后者为当前帧或块指定了选项[fn:exporting12]. 导出后端将在适当的情况下自动将角色或方括号中的属性包围.
+
+   此外,标题处理BEAMER_COL属性. 其值应为十进制数,表示列的宽度,占总文本宽度的一小部分. 如果标题没有特定的环境,其标题将被忽略,其内容将填充所创建的列. 否则,该块将填充整个列,标题将被保留. 两个连续的标题与非零的BEAMER_COL值共享相同的列L ATEX环境. 它将在没有这样的财产的下一个标题之前结束. 此环境自动生成. 尽管如此,它也可以显式创建,具有BEAMER_ENV属性的特殊列值(如果需要使用某些特定选项进行设置).
+
+*** Beamer特殊语法
+
+   Beamer后端是LATEX后端的延伸. 因此,识别所有L ATEX特殊语法(例如,'#+ LATEX:'或'#+ ATTR_LATEX:'). 有关详细信息,请参见第12.10节[L ATEX导出],第154页.
+
+   从toc生成的目录:t OPTION关键字被包装在一个框架内环境. 从TOC关键字(见第12.3节[目录],第139页)生成的那些不是. 在这种情况下,也可以在方括号内指定选项.
+
+   #+BEGIN_SRC org
+   #+TOC: headlines [currentsection]
+   #+END_SRC
+
+   Beamer特殊代码可以插入与下列构造︰
+
+   #+BEGIN_SRC org
+   #+BEAMER: \pause
+
+   #+BEGIN_EXPORT beamer
+   All lines in this block will appear only when using this back-end.
+   #+END_BEAMER
+
+   Text @@beamer:some code@@ within a paragraph.
+   #+END_SRC
+
+   尤其是最后这个例子可以用于将覆盖规格添加到其类型属于bold、item、link、radio-target和target,当将值括在尖括号内,并放在最前面的对象的对象.
+
+   #+BEGIN_SRC org
+   A *@@beamer:<2->@@useful* feature
+   #+END_SRC
+
+   最终,每一个普通的列表已支持:environment, :overlay和:options通过ATTR_BEAMER属性关联的关键字.第一个允许使用一个不同的环境,第二集覆盖规格并最后一个在当前列表环境中插入可选参数.
+
+   #+BEGIN_SRC org
+   #+ATTR_BEAMER: :overlay +-
+   - item 1
+   - item 2
+   #+END_SRC
+
+*** 编辑支持
+
+   你可以打开用于更快地编辑与特别轻微模式org-beamer-mode︰
+
+   #+BEGIN_SRC org
+   #+STARTUP: beamer
+   #+END_SRC
+
+   * C-c C-b (org-beamer-select-environment)
+
+      在org-beamer-mode中,此密钥提供快速选择投影机环境或BEAMER_COL属性.
+
+*** Beamer示例
+
+   这是一个用于Beamer导出的简单示例Org文档.
+
+   #+BEGIN_SRC org
+   #+TITLE: Example Presentation
+   #+AUTHOR: Carsten Dominik
+   #+OPTIONS: H:2 toc:t num:t
+   #+LATEX_CLASS: beamer
+   #+LATEX_CLASS_OPTIONS: [presentation]
+   #+BEAMER_THEME: Madrid
+   #+COLUMNS: %45ITEM %10BEAMER_ENV(Env) %10BEAMER_ACT(Act) %4BEAMER_COL(Col) %8BEAMER_OPT(Opt)
+     
+	* This is the first structural section
+
+	  ** Frame 1
+	  *** Thanks to Eric Fraga                                           :B_block:
+	  :PROPERTIES:
+	  :BEAMER_COL: 0.48
+	  :BEAMER_ENV: block
+	  :END:
+	  for the first viable Beamer setup in Org
+	  *** Thanks to everyone else                                        :B_block:
+	  :PROPERTIES:
+	  :BEAMER_COL: 0.48
+	  :BEAMER_ACT: <2->
+	  :BEAMER_ENV: block
+	  :END:
+	  for contributing to the discussion
+	  **** This will be formatted as a beamer note                       :B_note:
+	  :PROPERTIES:
+	  :BEAMER_env: note
+	  :END:
+	  ** Frame 2 (where we will not use columns)
+	  *** Request
+	  Please test this stuff!
+   #+END_SRC
+
+** 导出HTML
+
+   Org模式包含具有扩展HTML格式的HTML(XHTML 1.0 Strict)导出,类似于John Gruber的标记语言,但对HTML中的表格有附加的支持.
+
+*** HTML导出命令
+
+   * C-c C-e h h (org-html-export-to-html)
+
+      导出为HTML文件.对于一个Org文件myfile.org,其HTML文件为myfile.org,该文件将被覆盖且没有警告提示.C-c C-e h o导出为HTML文件并立刻使用浏览器打开.
+
+   * C-c C-e h H (org-html-export-as-html)
+
+      导出到临时的缓冲区中,不创建文件.
+
+*** HTML导出特殊设置
+
+    HTML导出引入了一些关键字,类似于第12.2章[导出设定],136页所述的常规选项设置.
+
+   ‘DESCRIPTION’
+
+      文档说明.此描述作为HTML元标记插入.如果列表很长,可以使用几个这样的关键字.
+
+   ‘HTML_DOCTYPE’
+
+      HTML文档类,例如:HTML5, (org-html-doctype).
+
+   ‘HTML_CONTAINER’
+
+   HTML容器,例如’div’,用于封装章节和元素(org-htmlcontainer-element).
+
+   ‘HTML_LINK_HOME’
+
+   主页链接URL (org-html-link-home).
+
+   ‘HTML_LINK_UP’
+
+   上传链接URL (org-html-link-up).
+
+   ‘HTML_MATHJAX’
+
+   MathJax (org-html-mathjax-options)选项.MathJax用于在HTML文档中的LATEX数学排版.第12.9.9章[HTML导出中的数学格式],第151页包含一个例子.
+
+   ‘HTML_HEAD’
+
+   附加到文档头(org-htmlhead)的末尾的任意行.
+
+   ‘HTML_HEAD_EXTRA’
+
+   附加到文档标题(org-htmlhead-extra)末尾的任一行.
+
+   ‘KEYWORDS’
+
+   关键字定义文档的内容.此描述作为HTML元标记插入.如果列表很长,可以使用几个这样的关键字.
+
+   ‘LATEX_HEADER’
+
+   附加到用于转换LATEX片段到图像的前导码的任意行.更多细节参见第12.9.9章[HTML导出中的数学格式],第151页.
+
+   ‘SUBTITLE’
+
+   文档的郭标题.其格式取决于是否使用HTML5及'subtitle'的CSS类型..
+
+   这些关键字在下面章节中有详细介绍.
+
+*** HTML文档类型
+
+   Org可以导出为不同的(X)HTML种类.
+
+   设置不同的org-html-doctype可以导出不同的(X)HTML种类.导出的HTML将根据该种类的语法需求进行调整.也可以将变量值直接设置为一个字符串的文档类型,这种情况下导出会尝试自动调整语法,或者可以使用现成的文档类型.
+
+   预设的选项有:
+
+      - “html4-strict”
+      - “html4-transitional”
+      - “html4-frameset”
+      - “xhtml-strict”
+      - “xhtml-transitional”
+      - “xhtml-frameset”
+      - “xhtml-11”
+      - “html5”
+      - “xhtml5”
+
+   详情请查看变量org-html-doctype-alist.缺省为“xhtml-strict”.
+
+   HTML5引入了几种新的元素类型.默认情况下,Org不会使用这些元素类型,但可以通过设置org-html-html5-fancy为non-nil(或在OPTION队列中设置html5-fancy项目),来激活一些新的块级元素.这些元素是使用任意#+BEGIN and #+END blocks来创建的.例如:
+
+   #+BEGIN_SRC org
+   #+BEGIN_aside
+   Lorem ipsum
+   #+END_aside
+   #+END_SRC
+
+   将导出为:
+
+   #+BEGIN_SRC html
+   <aside>
+     <p>Lorem ipsum</p>
+   </aside>
+   #+END_SRC
+
+   同时:
+
+   #+BEGIN_SRC org
+   #+ATTR_HTML: :controls controls :width 350
+   #+BEGIN_video
+   #+HTML: <source src="movie.mp4" type="video/mp4">
+   #+HTML: <source src="movie.ogg" type="video/ogg">
+   Your browser does not support the video tag.
+   #+END_video
+   #+END_SRC
+
+   导出为:
+
+   #+BEGIN_SRC html
+   <video controls="controls" width="350">
+     <source src="movie.mp4" type="video/mp4">
+     <source src="movie.ogg" type="video/ogg">
+     <p>Your browser does not support the video tag.</p>
+   </video>
+   #+END_SRC
+
+   不适用于HTML5元素的特殊块 (参见org-html-html5-elements) 将恢复为通常的特性, 例如:#+BEGIN_lederhosen将仍然导出为:’<div class="lederhosen">‘.
+
+   标题不能出现在特殊块中.为了封装一个标题及其内容,例如:’<section>‘或’<article>‘标签,应设置标题本身的HTML_CONTAINER属性.
+
+*** HTML前导码及后同步
+
+   HTML导出允许定义前导码及后同步.
+
+   org-html-preamble的默认值为t,这意味着前导码依据org-html-preamble-format中相关的格式字符串被插入.
+
+   设置org-html-preamble为字符串将覆盖默认格式字符串.如果设置前导码为一个函数,它会插入一个输出字符串的函数.设置为nil则不插入任何前导码.
+
+   org-html-postamble的默认值为auto,意味着HTML导出将查找作者、email、创建者和日期这些信息,并根据这些值建立后同步.将org-html-postamble设为t,则从org-html-postamble-format找到相关格式字符串插入后同步.设置后同步为nil则不插入任何后同步.
+
+*** 引用HTML标签
+
+   在HTML导出中,’<‘ 及 ‘>‘总是被转换成’&lt;’及’&gt;’.如果想包含原始的HTML码(仅出现在HTML导出中),可以使用’@@html:’标注它,如: ‘@@html:<b>@@bold text@@html:</b>@@’.
+   对于需要被逐字复制到导出文件的大量的HTML,可以使用:
+
+   #+BEGIN_SRC org
+   #+HTML: Literal HTML code for export
+   #+END_SRC
+   或
+
+   #+BEGIN_SRC org
+   #+BEGIN_EXPORT html
+    All lines between these markers are exported literally
+   #+END_EXPORT
+   #+END_SRC
+
+*** HTML导出中的链接
+
+   内部链接 (参见第4.2章 [内部链接],第38页)将继续在HTML中起作用.这包括由无线电目标建立自动链接(参见第4.2.1章[无线电目标],第39页).外部文件链接仍有效,如果目标文件与出版的Org文件有相同的相对路径.在假设HTML版本也存在链接文件并具有相同的相对路径的情况下,链接到其它.org文件将被转换为HTML链接；将org-html-link-org-files-as-html设置为零则禁止这种转换.id:’链接之后可被用于跨文件跳转到特定的入口.关于链接文件并将它们发布于发行目录中的相关信息,请参见第13.1.6章 [发行链接],第189页.
+
+   如果想指定链接的属性,可以使用特殊的#+ATTR_HTML行来定义将被添加到<a>或<img> 标记的属性.下面是一个关于设置标题及样式属性的链接的例子:
+
+   #+BEGIN_SRC org
+   #+ATTR_HTML: :title The Org mode homepage :style color:red;
+   [[http://orgmode.org]]
+   #+END_SRC
+*** HTML导出中的表格
+
+   组织模式表使用org-htmltable-default-attributes中定义的表属性导出为HTML.默认设置使得表不带单元格边框和框架.如果要更改单个表格,请在表格之前放置以下内容:
+
+   #+BEGIN_SRC org
+   #+CAPTION: 这是一个带有边框及各单元间有直线的表格
+   #+ATTR_HTML: :border 2 :rules all :frame border
+   #+END_SRC
+
+   您还可以在HTML输出中对列进行分组(参见第3.3章[列分组],第23页).
+
+   以下是自定义表HTML导出的选项列表.
+
+   org-html-table-align-individual-fields
+
+      非nil表示附加样式属性以对齐到每个表字段.
+
+   org-html-table-caption-above
+
+      当不为零时,将标题字符串放在表的开头.
+
+   org-html-table-data-tags
+
+      表数据字段的开始和结束标签.
+
+   org-html-table-default-attributes
+
+      将在表格标签中使用的默认属性和值.
+
+   org-html-table-header-tags
+
+      表头字段的开始和结束标签.
+
+   org-html-table-row-tags
+
+      表格行的开始和结束标签.
+
+   org-html-table-use-header-tags-for-first-column
+
+      Non-nil表示在标题标签的表格中的格式列.
+
+*** HTML导出中的图像
+
+   HTML导出可以内联在Org文件中被指定为链接的图像,并且可以使图像成为链接的可点击部分.默认情况下[fn:exporting13], 如果一个链接没有被描述,那么图像是内联的.所以 ‘[ [file : myimg.jpg ] [the image] ]’将被内联,而’the image’ 仅会产生一个指向图像的链接图像.如果描述部分本身是一个file : link 或指向图像的 http : URL,那么这个图像将被内联并激活.所以,点击图像将激活链接.例如:要包括链接到高分辨率版本图像的缩略图,可以使用:
+
+   #+BEGIN_SRC org 
+   [[file:highres.jpg][file:thumb.jpg]]
+   #+END_SRC
+
+   如果需要向内联图像添加属性,请使用#+ATTR_HTML.在下面的例子中我们指定alt和title属性来支持文本查看器和可访问性,并将其与右对齐.
+
+   #+BEGIN_SRC org
+   #+CAPTION: A black cat stalking a spider
+   #+ATTR_HTML: :alt cat/spider image :title Action! :align right[[./img/a.jpg]]
+   #+END_SRC
+
+   也可以使用http地址.
+
+*** HTML导出的数学公式
+
+   LATEX数学公式代码(参见第11.8.1章[LATEX碎片],第132页)可以在HTML页面上以两种不同的方式显示.默认是使用MathJax,它可以同Org[fn:exporting14]一起立即有效.一些MathJax显示选项可以通过org-htmlmathjax-options或在缓冲区中进行配置.例如,使用以下设置, 
+
+   #+BEGIN_SRC org
+   #+HTML_MATHJAX: align: left indent: 5em tagside: left font: Neo-Euler 
+   #+END_SRC
+
+   方程式标签将显示在左边框上,方程式将是从左边距的五个ems.
+
+   所有支持变量,请参阅org-html-mathjax-options的描述.MathJax模板可以通过org-html-mathjax-template进行配置.
+
+   还可以请求将LATEX公式处理成将被插入浏览器页面的小图像.在MathJax可用之前,这是Org文件的默认方法.该方法要求dvipng程序,dvisvgm或imagemagick组件在您的系统上可用.你仍然可以通过如下方式实现这种处理,
+
+   #+BEGIN_SRC org
+   #+OPTIONS: tex:dvipng 
+   #+OPTIONS: tex:dvisvgm
+   #+END_SRC
+
+   或:
+
+   #+BEGIN_SRC org
+   #+OPTIONS: tex:imagemagick
+   #+END_SRC
+
+*** HTML导出中的文本区域
+
+   在HTML中发布文字代码示例的另一种方式是使用文本区域,该示例甚至可以在将其粘贴到应用程序之前进行编辑.它是通过示例或src块中的:textarea属性触发的.
+
+   您还可以使用:height及:width属性来指定文本区域的高度和宽度,默认为示例中的行号,各自为80.例如:
+
+   #+BEGIN_SRC org
+
+   #+ATTR_HTML: :textarea t :width 40
+   #+BEGIN_EXAMPLE
+     (defun org-xor (a b)
+        "Exclusive or."
+        (if a (not b) b))
+   #+END_EXAMPLE
+
+   #+END_SRC
+
+*** CSS支持
+
+   你可以修改导出文件的CSS样式定义.HTML导出将以下特殊的CSS分类15[fn:exporting15]以适应文档的相应部分—你的样式规格可能会更改这些CSS标签,除了一些标准类,如:标题,桌面等.
+
+        p.author             作者信息,包括电子邮件
+        p.date               发布日期
+        p.creator            关于ofg模式版本的创建者信息
+        .title               文档标题
+        .subtitle            文档字幕
+        .todo                TODO关键字,所有未完成状态
+        .done                DONE关键字,所以完成状态
+        .WAITING             每个TODO关键字也使用一个以自己命名的类
+        .timestamp           时间戳
+        .timestamp-kwd       与时间戳相关的关键字,例如SCHEDULED
+        .timestamp-wrapper   跨越关键字加上时间戳
+        .tag                 标题中的tag标签
+        ._HOME               每个标签都将自己作为一个类, "@"替换为" "
+        .target              链接目标
+        .linenr              代码示例行号
+        .code-highlighted    引用代码突出显示
+        div.outline-N        outline等级N的div样式 (标题+文本)
+        div.outline-text-N   outline等级N的额外div文本样式
+        .section-number-N    标题的分段号,根据级别而不同
+        .figure-number       标签如"Figure 1:"
+        .table-number        标签如"Table 1:"
+        .listing-number      标签如"Listing 1:"
+        div.figure           如何格式化内联图像
+        pre.src formatted    源码
+        pre.example          通常示例normal example
+        p.verse              反义段落verse paragraph
+        div.footnotes        脚注段标题footnote section headline
+        p.footnote           脚注定义段落,包含脚注
+        .footref             脚注参考号 (始终为<sup>)
+        .footnum             脚注定义中的脚注号(始终为<sup>)
+        .org-svg             链接的.svg图像的默认类
+
+   每个导出的文件都包含一个紧凑的默认样式,它以基本的方式[fn:exporting16]定义了这些类.您可以覆盖这些设置,或者使用变量org-htmlhead及org-html-head-extra添加到其中. 您可以使用以下关键字覆盖每个文件的这些变量的全局值:
+
+   #+BEGIN_SRC org
+   #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style1.css" />
+   #+HTML_HEAD_EXTRA: <link rel="alternate stylesheet" type="text/css" href="style2.css" />
+   #+END_SRC
+
+   对于更长的样式定义,可以直接编写<style></style>章节,而无需引用外部文件.
+
+   为了向子树添加样式,请使用:HTML_CONTAINER_CLASS: 给树分配类属性.为了定义特定标题的CSS样式,可以使用在CUSTOM_ID: property中指定的id.
+
+*** 支持JavaScript显示网页
+
+   Sebastian Rose编写了一个JavaScript程序,特别设计用于增强由Org创建的HTML文件的Web浏览体验.该程序允许您使用两种不同的方式查看大文件.第一种是Info-like模式,其中每章节分别显示,可以使用n和p键进行导航(以及一些其它按键,按？可查看可用的键).第二种视图类型非常像Org在Emacs中提供的折叠视图.该脚本可从http://orgmode.org/org-info.js 获得,您可以在http://orgmode.org/worg/code/org-info-js/ 找到有关文档. 我们在我们的网站上主管脚本,但如果您需要大量使用时可能不希望依赖于http://orgmode.org 并希望在自己的web服务器上安装本地副本.
+
+   所有使用该程序所需要的是向组织文件添加一行:
+
+   #+BEGIN_SRC org
+   #+INFOJS_OPT: view:info toc:nil
+   #+END_SRC
+
+   如果找到这一行,HTML头将自动包含调用脚本所需的代码.使用上述行可以设置以下查看选项:
+
+      路径:     脚本路径.默认是从 http://orgmode.org/org-info.js 抓取脚本,但您可能想拥有本地副本并使用像’../scripts/org-info.js’这样的路径.
+      视图:     首次显示网站时的初始视图.可能值如下: 
+                   info      信息界面,每页一个章节.
+                   预览      折叠界面,最初只显示顶层.
+                   内容      折叠界面,从所有可见标题开始.
+                   显示所有  折叠界面,所有标题及文本可见. 
+      sdepth:   最大标题级别,仍将成为信息和折叠模式的独立章节.默认值取自org-export-headline-levels (等于#+OPTIONS的H开关).如果小于org-export-headline-levels,则每个信息/折叠章节仍可以包含子标题. 
+      toc:      目录最初是否应为可见?即使为nil,也可以通过i到达“toc”.
+      tdepth:   内容列表的深度.默认值取自变量org-export-headline-levels及org-export-with-toc.
+      ftoc:     页面的CSS是否为"toc"指定了一个固定的位置？如果是,则永远不会作为章节显示.
+      ltoc:     每个章节应有短内容(子内容)？ 如果章节应该在初始文本之上,请进行上述操作.
+      mouse:    当鼠标在其上时,标题会突出显示.应为下划线或背景颜色显示,如 ‘#cccccc’.
+      buttons:  view-toggle按钮应该无处不在？当为nil(默认)时,只有一个这样的按钮将出现.
+
+   您可以通过自定义变量org-htmlinfojs-options来为这些选项选择默认值. 如果您始终想将脚本应用于您的页面,请配置变量org-html-use-infojs.
+
+** LATEX导出
+
+   LATEX导出可以生成任何标准或自定义文档类[fn:exporting17]的任意复杂的LATEX文档.Org LATEX出口商致力于生产完全链接的PDF输出.
+
+   与LATEX一样,空白行对于后端是有意义的:如果两个连续的句法元素不被空行分隔,则不会启动段落.
+
+*** LATEX导出命令
+
+   * C-c C-e l l (org-latex-export-to-latex)
+
+      导出为一个LATEX文件.对于Org文件myfile.org,LATEX文件将是myfile.tex.该文件将被无警告覆盖.
+
+   * C-c C-e l L (org-latex-export-as-latex)
+
+      导出到临时缓存.不创建文件.
+
+   * C-c C-e l p (org-latex-export-to-pdf)
+
+      导出为LATEX,然后处理为PDF.
+
+   * C-c C-e l o 
+
+      导出为LATEX,然后处理为PDF,然后打开生成的PDF文件.
+
+   导出支持几个LATEX引擎,即’pdflatex’, ‘xelatex’和’lualatex’.可以通过org-latex-compiler或#+LATEX_COMPILER关键字设置默认的LATEX编译器.允许仅加载相关编译器的某些包 参见org-latex-default-packages-alist的docstring.参考书目编译器也可以通过org-latex-bibtex-compiler[fn:exporting18]设置.
+
+*** LATEX特定导出设置
+
+   LATEX导出介绍了一些关键字,类似于第12.2章 [导出设置],第136页中的通用选项设置.
+
+   ‘DESCRIPTION’
+
+      文档说明.默认情况下,这些将使用'hyperref'作为元数据插入. 文档元数据可以通过org-latex-hyperreftemplate进行配置.Description也可以通过org-latex-title-command作为前端的一部分进行排版. 如果说明很长,可以使用多个#+ DESCRIPTION关键字.
+
+   ‘LATEX_CLASS’
+
+      预定义的前导及标题级别映射使用(org-latexdefault-class).必须为org-latex-classes中的一个元素.
+
+   ‘LATEX_CLASS_OPTIONS’
+
+      给予LATEX文档类的选项.
+
+   ‘LATEX_COMPILER’
+
+      用于生成PDF的编译器 (org-latex-compiler).
+
+   ‘LATEX_HEADER’
+
+      在“hyperref”设置之前,将任意行添加到文档的前导码. 该位置可以通过org-latex-classes进行控制.
+
+   ‘LATEX_HEADER_EXTRA’
+
+      在“hyperref”设置之前,将任意行添加到文档的前导码. 该位置可以通过org-latex-classes进行控制.
+
+   ‘KEYWORDS’
+
+      关键字定义文档的内容.默认情况下,这些将使用'hyperref'作为元数据插入.文档元数据可以通过org-latex-hyperref-template进行配置.描述也可以通过org-latex-title-command作为前端事物的一部分进行排版.如果描述很长,可以使用多个#+ KEYWORDS.
+
+   ‘SUBTITLE’
+
+      文件副标题.根据org-latex-subtitleformat排版.如果org-latex-subtitle-separate是非零的,则将其作为“\ title”宏的一部分键入.它也可以通过org-latex-hyperref-template访问或者作为前端事物的一部分通过org-latex-title-command访问排版.
+
+   以下部分详细介绍了这些关键字.
+
+*** LATEX标题及章节结构
+
+   默认情况下,前三个概要层级成为标题,定义了一个通用文档结构.其他层级将导出为逐项或枚举列表. 转换也可能发生在不同的层级 (参见第12.2章 [导出设置],第136页).
+
+   默认情况下,LATEX输出使用类文章.
+
+   您可以通过为org-latex-default-class设置不同的值对此进行全局更改,或者通过在文件中添加如#+LATEX_CLASS:myclass选项进行本地更改,或者使用导出到仅包含此(子)树的区域时适用的EXPORT__LATEX_CLASS属性,该类必须在org-latex-classes中列出.此变量为每个类[fn:exporting19]定义了头模板,并允许定义每个类的章节结构.在这里您也可以定义自己的类.
+
+   LATEX_CLASS_OPTIONS关键字或EXPORT_LATEX_CLASS_OPTIONS属性可以指定\ document类宏的选项. 必须按照LATEX的预期方式在方括号内提供这些选项.
+
+   您也可以使用LATEX_HEADER和LATEX_HEADER_EXTRA[fn:exporting20]关键字来添加为标题添加行.更多信息请参阅org-latex-classes的docstring.
+
+   举例如下:
+
+   #+BEGIN_SRC org
+   #+LATEX_CLASS: article
+   #+LATEX_CLASS_OPTIONS: [a4paper]
+   #+LATEX_HEADER: \usepackage{xyz}
+   * Headline 1
+     some text
+   #+END_SRC
+
+*** 引用LATEX代码
+
+   嵌入LATEX,如在第11.8章[嵌入LATEX], 第132页所述,将被正确插入到LATEX文件中.此外,您可以添加专用代码,代码应仅在LATEX导出中存在,代码使用以下结构:
+
+   Code within @@latex:some code@@ a paragraph.
+
+   #+BEGIN_SRC org
+
+   #+LATEX: Literal LATEX code for export
+   #+BEGIN_EXPORT latex
+   All lines between these markers are exported literally
+   #+END_EXPORT
+
+   #+END_SRC
+
+*** LATEX导出中的表格
+
+    对于表的LATEX导出,可以指定标签和标题(参见第11.4章[图像和标签],第129页). 也可以使用属性来控制表格布局和内容.有效的LATEX属性包括:
+
+      :mode           表格内容的种类.它可以设置为表,数学,内联数学或逐字. 特别地,数学或内联数学模式时,每个单元格按原样导出,并且表被封装在数学环境中.而且,共享相同数学模式的连续表在同一环境中被合并.默认模式在org-latex-default-table-mode中确定.
+      :environment    用于表格的环境.可被设置成任意LATEX表格环境,如tabularx[fn:exporting21], longtable, array, tabu[fn:exporting22], bmatrix... 默认为 org-latex-default-table-environment值.
+      :caption        #+CAPTION关键字是设置表格标题的最简单方法(参见第11.4章节[图像和表格],第129页).如果需要该任务的更高级命令,则可以使用:caption属性.它的值应该是原始的LATEX代码,优先级高于#+CAPTION.
+      :float
+      :placement      :float指定表格的浮动环境.可能的值为sideways[fn:exporting23], 多列, t and nil. 当未指定时,具有标题的表格将具备表格环境.而且,:placement属性可以指定浮动位置.注意:对于:float sideways表格,:placement被忽略.
+      :align
+      :font
+      :width          分别设置表的对齐字符串的字体大小及宽度.它们仅适用于常规表格.
+      :spread         特定于tabu及环境的布尔值,仅在与:width属性一起使用时生效.当:spread不为零时,表将被扩展或缩小为:width值大小.
+      :booktabs
+      :center
+      :rmlines        它们分别控制表格线条的粗细(假设包被正确加载)及表格每一条水平线的对齐和删除,但是第一个除外(仅在“table.el”表中).特别地,org-latex-tables-booktabs(分别为org-latex-tables-centered)全局激活第一个(分别为第二个)属性.
+      :math-prefix
+      :math-suffix
+      :math-arguments 在数学环境的表格之前或之后,在宏名称及表格内容之间,字符串被分别插入.:math-arguments属性用于需要多个参数(例如qbordermatrix)的矩阵宏.
+
+   因此,属性可以在广泛的情况下使用,例如编写跨越多个页面的表格或矩阵产品:
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :environment longtable :align l|lp{3cm}r|l
+    | ..... | ..... |
+    | ..... | ..... |
+   #+ATTR_LATEX: :mode math :environment bmatrix :math-suffix \times
+    | a | b |
+    | c | d |
+   #+ATTR_LATEX: :mode math :environment bmatrix
+    | 1 | 2 |
+    | 3 | 4 |
+   #+END_SRC
+   在下面例子中,LATEX命令: \bicaption{HeadingA}{HeadingB}用于设置标题.
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :caption \bicaption{HeadingA}{HeadingB}
+   | ..... | ..... |
+   | ..... | ..... |
+   #+END_SRC
+
+*** LATEX导出中的图像
+
+   链接到没有描述部分的图像,如[[file:img.jpg]]或[[./ img.jpg]]将被插入到由LATEX处理产生的PDF输出文件中.Org使用 \includegraphics宏插入图像[fn:exporting24].
+
+   您可以分别指定图像宽度或高度:width和:height属性.还可以使用:options属性添加任何其它选项,参见如下例子:
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :width 5cm :options angle=90
+   [[./img/sed-hr4049.pdf]]
+   #+END_SRC
+
+   如果需要一个特定的字幕命令,请使用:caption属性.它将覆盖标准#+CAPTION值(如果有). 
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :caption \bicaption{HeadingA}{HeadingB}
+   [[./img/sed-hr4049.pdf]]
+   #+END_SRC
+
+   如果已经指定了在第11.4节[图像和表格],第129页中所述的标题,图像将被封装到图形环境中,从而成为浮动元素.也可以要求Org以float形式导出图像而不通过:float属性指定标题.您也可以将其设置为:
+
+   - t: if you want to use the standard ‘figure’ environment. It is used by default if you provide a caption to the image.
+   - multicolumn: if you wish to include an image which spans multiple columns in a page.This will export the image wrapped in a figure* environment.
+   - wrap: if you would like to let text flow around the image. It will make the figure occupy the left half of the page.
+   - sideways: if you would like the image to appear alone on a separate page rotated ninety degrees using the sidewaysfigure environment. Setting this :float option will ignore the :placement setting.
+   - nil: if you need to avoid any floating environment, even when a caption is provided.
+
+   要修改任何浮动环境的位置选项,请设置位置属性.
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :float wrap :width 0.38\textwidth :placement {r}{0.4\textwidth} [[./img/hst.png]]
+   #+END_SRC
+
+   图像默认为位于中心位置.但是,可以通过将:center属性设置为nil来禁用此行为. 为防止任何图像在整个文档中居中,请设置org-latex-images-centered.
+
+   最后,如果:comment-include属性设置为非零值,则LATEX \includegraphics宏将被注释掉.
+
+*** LATEX导出中的列表
+
+   普通列表接受两个可选属性::environment和:options. 第一个可以用来指定环境. 第二个可以用于指定环境的附加参数. 以下示例说明了两个属性:
+
+   #+BEGIN_SRC org
+   #+LATEX_HEADER: \usepackage[inline]{enumitem}
+   Some ways to say "Hello":
+   #+ATTR_LATEX: :environment itemize*
+   #+ATTR_LATEX: :options [label={}, itemjoin={,}, itemjoin*={, and}]
+   - Hola
+   - Bonjour
+   - Guten Tag.
+   #+END_SRC
+
+   默认情况下,LATEX仅支持列表的四层嵌套.如果需要更深层嵌套,可以使用'enumitem' LATEX包,如下例所示:        
+
+   #+BEGIN_SRC org
+     #+LATEX_HEADER: \usepackage{enumitem}
+     #+LATEX_HEADER: \renewlist{itemize}{itemize}{9}
+     #+LATEX_HEADER: \setlist[itemize]{label=$\circ$}
+     - One
+     - Two
+     - Three
+     - Four
+     - Five
+   #+END_SRC
+
+*** LATEX导出中的代码块
+
+   除了第11.5章[逐字示例],第129页中定义的语法, 名称和标题 (参见第11.4章[图像及表格],第129页), 代码块也支持两个附加属性 :float 和 :options.
+
+   可以将前者设置为:
+      - t: 如果要使代码块成为浮点数.当提供标题时,它是默认值.
+      - multicolumn: 如果您希望在页面中包含跨多个列的代码块.
+      - nil: 如果您需要避免任何浮动环境,即使提供了标题.它对于可能不适合单页面的源代码是有用的.
+   
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :float nil
+   #+BEGIN_SRC emacs-lisp
+   Code that may not fit in a single page.
+   #+END_SRC
+   #+END_SRC
+   
+   后者允许指定用于输出中突出代码的相关包的选项(例如,列表). 这是org-latex-listing-options和org-latex-minted-options变量的本地对应,可以看到.
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :options commentstyle=\bfseries
+   #+ BEGIN_SRC emacs-lisp
+      (defun Fib (n) ; Count rabbits.
+        (if (< n 2) n (+ (Fib (- n 1)) (Fib (- n 2)))))
+   #+ END_SRC
+   #+END_SRC
+
+*** LATEX导出中的示例块
+
+   默认情况下,当导出到LATEX时,示例块内容在’verbatim’环境中封装.可以使用适当的导出过滤器从而使用不同的全局环境(参见第12.17章[高级配置],第179页).可以使用环境参数改变每一个块.
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :environment myverbatim
+   #+BEGIN_EXAMPLE
+     This sentence is false.
+   #+END_EXAMPLE
+   #+END_SRC
+
+*** LATEX导出中的特殊块
+
+   在LATEX后端,特殊块成为同名称的环境.:options属性值将按原样追加到该环境的开放字符串中.例如:
+
+   #+BEGIN_SRC org
+   #+BEGIN_abstract
+   We demonstrate how to solve the Syracuse problem.	
+   #+END_abstract
+   #+ATTR_LATEX: :options [Proof of important theorem]
+   #+BEGIN_proof
+   ...
+   Therefore, any even number greater than 2 is the sum of two primes.
+   #+END_proof
+   #+END_SRC
+
+   变成
+
+   #+BEGIN_SRC latex
+   \begin{abstract}
+   We demonstrate how to solve the Syracuse problem.
+   \end{abstract}
+   \begin{proof}[Proof of important theorem]
+   ...
+   Therefore, any even number greater than 2 is the sum of two primes.
+   \end{proof}
+   #+END_SRC
+
+   如果需要插入特定的字幕命令,请使用:caption属性.它将覆盖标准的#+CAPTION值,(如果有).例如:
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :caption \MyCaption{HeadingA}
+   #+BEGIN_proof
+   ...
+   #+END_proof
+   #+END_SRC
+
+*** LATEX导出中的水平规则
+
+   可以分别通过:width及 :thickness属性控制给定水平规则的宽度和厚度:
+
+   #+BEGIN_SRC org
+   #+ATTR_LATEX: :width .6\textwidth :thickness 0.8pt
+   -----
+   #+END_SRC
+
+12.11 Markdown导出
+Md导出后端为org mode buffer生成Markdown语法.
+它是建立在HTML后端:任何构造没有被Markdown语法支持将被html后端约束和转化.
+Markdown导出命令
+C-c C-e m m
+          导出作为一个text文件被写在Markdown语法里.作为一个org文件myfile.org,造成文件将是myfile.md.这文件将被覆盖外部警告.
+C-c C-e m M
+          导出一个临时缓存,不创建文件.b
+C-c C-e m o
+          导出一个带有Markdown语法的text文件,然后打开它.
+标题和分段结构
+Markdown导出能生成包括atx和setext类型作为标题,例如,org-md-headline-style.前者引入了两个层次的硬限制,而后者推到六
+该限制下的标题列为列表.您也可以设置软限制之前.
+12.12 开放文档格式 Text导出
+Org模式支持OpenDocument text格式.文件创造被这导出者用penDocument-v1.2 specification26 和兼容 LibreOffice 3.4.
+12.12．1 Pre-requisites 为ODT导出
+ODT导出者依赖在zip项目去创造最终输出.检查这项目在进行之前.
+12.12．2 ODT导出命令
+C-c C-e o o
+导出作为penDocument text文件.
+如果org-odt-preferred-output-format被规定,自动转换导出文件到该格式.
+对于一个org文件myfile.org,这ODT文件将是myfile.odt.该文件将被覆盖没有警告.如果有一个活跃区域,只有该区域导出.如果选定的区域是一个单一的树,树头将成为文档标题.如果树头项,或继承,一个export_file_名称属性,该名称将用于导出.
+C-c C-e o O导出作为一个penDocument text文件和打开结果文件.
+如果org-odt-preferred-output-format被规定,打开转换文件.
+12.12．3 ODT具体导出设置
+这ODT导出者介绍一些关键词,类似于第12.2节中描述的一般选项设置.
+‘DESCRIPTION’
+             文件描述.这些作为文档元数据插入.如果列表长,可以使用几个这样的关键字.
+‘KEYWORDS’
+            定义文档内容的关键词.这些作为文档元数据插入.如果列表长,可以使用几个这样的关键字.
+‘ODT_STYLES_FILE’ 
+            文档的样式文件(org-odt-styles-file).查看第12.12.5章节.
+12.12．4 延伸ODT导出
+ODT导出者可以与各种文档转换器接口,支持常见的转换器的盒子.因此,您可以使用它导出格式,如“DOC”或将一个文件从一种格式(说“CSV”)为另一种格式(说“ODS”或“xls”).如果你有一个工作安装LibreOffice,文件转换器为您预先配置,您可以立即使用它.如果你想使用unoconv作为首选的转换器,自定义变量org ODT转换过程指unoconv.你也可以使用你自己喜欢的转换或调整的LibreOffice默认设置和unoconv的转换器.
+自动导出到其他格式
+你会发现自己导出ODT格式,只有立即保存文件到其他格式,如导出'文件',' docx,“RTF”、“PDF”等.在这种情况下,你可以通过自定义变量org ODT preferredoutput指定您的首选的输出格式.这样,导出的命令(见[Exporting to ODT],,162页)可以扩展到导出到你自己想要的格式.
+文件格式转换
+有许多文件转换器在支持转换和从各种格式的文件,包括但不限于ODT格式.LibreOffice转换器,上面所提到的,就是这样一个转换器.一旦配置了转换器,您可以使用以下命令与它进行交互
+M-x org-odt-convert RET.
+           将现有文档从一种格式转换为另一种格式.带前缀参数,还打开新生成的文件.
+12.12．5 应用自定义样式
+这ODT导出者的一套OpenDocument款式(看 [Working with Open-
+Document style files], page 168) ,确保格式化输出.这些格式风格,但是,可能不符合您的风格.自定义输出,你可以修改上面的样式文件直接生成所需的样式,或者使用LibreOffice应用.后者的方法是适合于专业和非专业用户一样,这里的描述.
+应用自定义样式:简单方法
+1.	创建一个样本example.org与下面的设置导出到文件ODT格式.
+2.	打开example.odt使用LibreOffice.使用设计师定位的目标格式,这些通常有'org'前缀和修改那些你的风格.保存修改后的文件为OpenDocument格式文本(.odt)或文档模板(.OTT)文件.
+3．自定义变量org ODT风格文件,它指向新创建的文件.有关附加配置选项参见[Overriding factory styles],169页.
+    如果你想选择每个文件的基础上的一种方式,你可以使用# + odt_styles_file选项.一个典型的设置将看起来像
+#+ODT_STYLES_FILE: "/path/to/example.ott"  
+或者
+   #+ODT_STYLES_FILE:("/path/to/file.ott"("styles.xml" "image/hdr.png"))
+使用第三方样式和模板
+您可以使用第三方样式和模板自定义输出.这将产生所需的输出如果模板提供了所有风格的名字“ODT的导出者依赖.除非满足这个条件,这输出不尽人如意.因此,强烈建议您只使用从环境设置直接派生的模板.
+12.12．6 链接ODT导出
+ODT导出者创造本地的交叉引用的内部链接.它为所有其他链接创建Internet样式链接.
+一个没有描述和注定要定期(未列出)大纲标题的链接被替换为标题的交叉引用和节号.
+A ‘\ref{label}’-style引用于图像,表等用标记实体的交叉引用和序列号替换.看第12.12.10章节.
+12.12．7 表ODT导出
+导出本地org模式表(see Chapter 3 [Tables], page 19)和单个table.el表被支持.然而,复杂的table.el表表有列口或行跨度不支持.从导出的文档中剥离这些表.
+默认情况下,导出表的顶部和底部的框架和规则分离行和列组.(看 Section 3.3 [Column groups], page 23). 此外,所有表格排版占据相同的宽度.如果表指定对齐和相对宽度对于其列(看 Section 3.2 [Column width and alignment], page 22)这些可以导出.
+您可以通过指定控件来控制表的宽度:相对宽度属性使用一个# + attr_odt线.
+例如,考虑下面的表,使用上面提到的所有规则.
+#+ATTR_ODT: :rel-width 50
+| Area/Month | Jan | Feb | Mar | Sum |
+|---------------+-------+-------+-------+-------|
+| / | < | | | < |
+| <l13> | <r5> | <r5> | <r5> | <r6> |
+| North America | 1 | 21 | 926 | 948 |
+| Middle East | 6 | 75 | 844 | 925 |
+| Asia Pacific | 9 | 27 | 790 | 826 |
+|---------------+-------+-------+-------+-------|
+| Sum | 16 | 123 | 2560 | 2699 |
+在导出时,表将占据文本区域的50%.本栏目将尺寸(约)在13:5:5:5:6比.第一列将向左对齐,其余列将正确对齐.将页眉和最后列从其他列中分离后将有垂直规则.将从其他行分离页眉和最后一行的水平规则.如果您对上述格式选项不满意,您可以创建自定义表样式和表使用# + attr_odt线.看 [Customizing tables in ODT export], page 170.
+12.12．8 图像ODT导出
+嵌入图像
+你能嵌入图像在导出文件中,被链接的图像文件没有描述.例如,嵌入img.png任何一个,如下:
+[[file:img.png]]
+[[./img.png]]
+点击图像嵌入
+你可以通过提供一个链接的描述是一个链接到一个图像文件创建可点击的图像.例如,嵌入图像org-mode-unicorn.png点击它时跳http://orgmode.org网站,做到以下几点
+[[http://orgmode.org][./org-mode-unicorn.png]]
+嵌入式图像的分选与缩放
+您可以控制嵌入式图像的大小和规模使用# + attr_odt属性.
+导出者以厘米为单位指定最终文档中所需图像的大小.为了缩小嵌入式图像,导出者查询像素尺寸的图像用一个一个的识别程序a.或B.Emacs创建图像和图像大小APIs30. 像素尺寸随后被转换成厘米的单位使用org-odt-pixels-per-inch. 此变量的默认值设置为每英寸显示像素.您可以调整这个变量,以达到最佳效果.
+下面的例子说明了各种可能性.
+明确大小的图像
+嵌入img.png为10厘米x 10厘米的图像,做到以下几点:
+# + attr_odt:::高10宽10
+[[./img.png]]
+缩放图像
+嵌入img.png在一半大小,做到以下几点:
+#+ATTR_ODT: :比例 0.5
+[[./img.png]]
+将图像缩放到特定宽度
+嵌入img.png与宽约10厘米的同时保留了原来的高度:宽度比,做到以下几点:
+#+ATTR_ODT: :宽度 10
+[[./img.png]]
+将图像缩放到特定高度
+嵌入img.png与高10厘米,在保留原有的高宽比,做到以下几点
+#+ATTR_ODT: :高度 10
+[[./img.png]]
+固定的图像
+你可以控制方式中,图像是固定设置:其# + attr_odt线固定性能.您可以为以下指定三个值之一:a固定属性: ‘"as-char"’, ‘"paragraph"’ and ‘"page"’.
+若要创建固定到页面上的图像,请执行以下操作:
+#+ATTR_ODT: :固定 "page"
+[[./img.png]]
+12.12．9 数学格式ODT导出
+ODT导出者处理数学特殊支持.
+工作与LATEX数学片段
+LATEX数学片段可以以下方式之一嵌入在ODT文件:
+1.	MathML
+此选项在每个文件的基础上激活
+#+OPTIONS: LaTeX:t
+有了这个选项,LATEX片段首先被转换成MathML片段使用一个外部的LATEXMathML转换程序.由此产生的MathML片段然后嵌入在导出文件OpenDocument公式.
+您可以指定自定义转换器的LATEXMathML的变量org-latex-to-mathml-convert-command和org-latex-to-mathml-jar-file.
+使用mathtoweb31作为你的转换器,您可以将上述变量配置为
+(setq org-latex-to-mathml-convert-command
+"java -jar %j -unicode -force -df %o %I"
+org-latex-to-mathml-jar-file
+"/path/to/mathtoweb.jar")
+使用latexml32用
+(setq org-latex-to-mathml-convert-command
+"latexmlmath \"%i\" --presentationmathml=%o")
+你可以使用下面的命令来快速验证LATEX的可靠性MathML转换器.
+M-x org-odt-export-as-odf RET
+转换一个LATEX数学片段成为一个OpenDocument公式(ODF文件.).
+M-x org-odt-export-as-odf-and-open RET
+转换一个LATEX数学片段成为一个OpenDocument公式(ODF文件.)和使用系统注册应用程序打开公式文件.
+Png图像
+选项在每个文件的基础上触发
+#+OPTIONS: tex:dvipng
+#+OPTIONS: tex:dvisvgm
+或者
+#+OPTIONS: tex:imagemagick
+有了这个选项,将LATEX片段加工成PNG或SVG图像,并将所生成的图像嵌入到导出的文档中.这种方法需要的dvipng程序,dvisvgm或ImageMagick套件在您的系统上可用的.
+工作在MathML或OpenDocument文件
+由于各种原因,您可能会发现在ODT文件小于可靠嵌入LATEX数学片段.在这种情况下,你可以嵌入一个数学方程,通过链接到它的MathML(.MML)源或OpenDocument公式(.ODF)文件如下所示:
+[[./equation.mml]]
+或者
+[[./equation.odf]]
+12.12．10 标签和字幕 ODT导出
+你的标签和标题不同类别对象内联图像、表格、LATEX片段或使用#+LABEL和#+CAPTION行的数学公式.看 Section 11.4 [Images and tables], page 129. ODT导出者列举每种标记或说明对象的一个给定的类别.因此,每一个这样的对象都根据其在组织文件中的外观顺序分配一个序列号.
+在导出的文档中,用户提供的标题随类别和序列号而增强.在org文件中考虑以下内嵌图像.
+#+CAPTION: Bell curve
+#+LABEL: fig:SED-HR4049
+[[./img/a.png]]
+可以在导出的文档中显示如下.
+Figure 2: Bell curve
+您可以通过自定义选项来修改标题的类别组件org-odt-category-map-alist.例如,用字符串标记所有嵌入的图像‘Illustration’ (instead of the default ‘Figure’)使用以下设置:
+(setq org-odt-category-map-alist
+(("__Figure__" "Illustration" "value" "Figure" org-odt--enumerable-image-p)))
+这样,以前的图像将标题如下在导出的文件.
+Illustration 2: Bell curve
+12.12．11 文字的例子  ODT导出
+导出的文字例子(看 Section 11.5 [Literal examples], page 129)完全被支持.在内部,导出依赖htmlfontify.el生成所有风格定义一个想要的清单.自动生成的方式有orgsrc”作为前缀,由Emacs字体锁库的源语言的使用面临着继承他们的颜色.
+如果你喜欢使用您自己的自定义样式fontification,您可以通过自定义选项来实现org-odt-create-custom-styles-for-srcblocks.
+你可以关闭文字实例的功能自定义选项org-odtfontify-
+srcblocks.
+12.12．12 高级主题  ODT导出
+如果你依赖于ODT导出,你可能想利用全套的功能导出者提供.本节描述了对高级权限用户感兴趣的特性.
+配置文档转换器
+ODT导出者可以与常用转换器比较小或者没有额外配置在你身边.看 Section 12.12.4 [Extending ODT export], page 162. 如果您使用的是默认情况下不支持的转换器,或者如果您想调整默认转换器设置,请继续如下.
+1.	登记的转换器
+你的名字并把它添加到已知的转换器转换器列表的自定义选项org-odt-convert-processes.还指定如何调用转换器通过命令行来实现转换.
+2.	配置能力
+指定的格式转换器可以处理通过自定义变量org-odt-convert-capabilities.此变量的默认值为向导配置您的转换器.正如默认设置所建议的那样,您可以指定全套由转换器支持的格式并不仅限于指定相关的OpenDocument格式是文本格式.
+3.	选择转换器
+选择新添加的转换器的自定义选项org-odt-convert-process的首选之一.
+以OpenDocument样式文件工作
+本节探讨的ODT导出者内部的手段,它所产生的类文件.如果你是在探索自动和自定义文档由导出者使用风格感兴趣读这节.
+a.	工厂风格
+ODT导出者依靠生成输出两个文件.这些文件是捆绑在一起的分布在目录所指向的变量org-odt-styles-dir.这两个文件是:
+OrgOdtStyles.xml
+该文件有助于最终的styles.xml ODT文件.此文件被修改为以下目的: 
+1. 根据用户设置控制大纲编号.
+2. 添加的代码块fontification htmlfontify.el生成方式.
+OrgOdtContentTemplate.xml
+该文件有助于最终的ODT的xml文件.org大纲的内容插入在‘<office:text>’. . . ‘</office:text>’此文件的元素”.
+除了作为一个最终的xml模板文件,该文件用于以下目的:
+1.	它包含由导出者引用的表格格式的自动样式.
+2.	它包含‘<text:sequence-decl>’. . . ‘</text:sequence-decl>’的元素,如何控制各种实体表、图像、方程等的编号.
+b.无视工厂风格
+   下面的两个变量控制位置的ODT导出回升和内容的模板文件的自定义样式.您可以自定义这些变量以覆盖导出者使用的工厂样式.
+org-odt-styles-file
+使用这个变量来指定styles.xml将用于最终的输出.可以指定下列值之一:
+1.	A styles.xml file
+使用此文件,而不是默认的styles.xml
+2.	A .odt or .ott file
+使用styles.xml包含在指定文档的文本或模板文件
+3.	ODT或包含在其中的OTT文件和文件的一个子集
+使用styles.xml包含在指定文档的文本或模板文件.此外,提取指定成员的文件和嵌入在最终的ODT文件.
+如果styles.xml文件引用其他文件如页眉和页脚图像使用此选项.
+4.	Nil
+使用默认的styles.xml
+
+org-odt-content-template-file
+使用这个变量来指定xml的空白,将用于最终的输出.
+创建一个样式
+有时您希望在导出的文档中使用一次性格式.你可以通过在“文件嵌入原文档的XML.这个功能的使用更好地说明了几个例子.
+1.	嵌入ODT标签作为常规文本的一部分
+你可以通过将内联OpenDocument语法在‘@@odt:...@@’的标记.例如,高亮显示文本区域:
+@@odt:<text:span text:style-name="Highlight">This is a highlighted
+text</text:span>@@.但这是一个普通的文本.
+提示:在动作中看到上面的例子,编辑你的styles.xml (看 [Factory styles],
+page 168)和添加一个自定义的‘Highlight’的风格,如下图所示.
+<style:style style:name="Highlight" style:family="text">
+<style:text-properties fo:background-color="#ff0000"/>
+</style:style>
+2.	一一线嵌入XML文档
+你可以使用#+ODT:一套简单的ODT OpenDocument格式:指令.例如,强制分页如下:
+#+ODT: <text:p text:style-name="PageBreak"/>
+提示:在动作中看到上面的例子,编辑你的styles.xml (看 [Factory styles],
+page 168)和添加一个自定义的‘PageBreak’的风格,如下图所示.
+<style:style style:name="PageBreak" style:family="paragraph"
+style:parent-style-name="Text_20_body">
+<style:paragraph-properties fo:break-before="page"/>
+</style:style>
+3.	嵌入一块OpenDocument格式的XML
+你可以添加一个大块OpenDocument XML使用#+BEGIN_EXPORT
+odt. . .#+END_EXPORT构建...
+例如,创建一个使用粗体文本的一次性段落,请执行以下操作:
+#+BEGIN_EXPORT odt
+<text:p text:style-name="Text_20_body_20_bold">
+This paragraph is specially formatted and uses bold text.
+</text:p>
+#+END_EXPORT
+定制在ODT导出表
+您可以重写默认格式的表格通过指定一个自定义表格样式与#+ATTR_ODT线.有关表默认格式的讨论参见Section 12.12.7 [Tables in ODT export], page 164.
+这一特点密切模仿表格模板是在opendocumentv1.2 specification.33定义方式
+要快速预览此功能,请安装以下设置并导出如下表:
+(setq org-odt-table-styles
+(append org-odt-table-styles
+'(("TableWithHeaderRowAndColumn" "Custom"
+((use-first-row-styles . t)
+(use-first-column-styles . t)))
+("TableWithFirstRowandLastRow" "Custom"
+((use-first-row-styles . t)
+(use-last-row-styles . t))))))
+#+ATTR_ODT: :style TableWithHeaderRowAndColumn
+| Name | Phone | Age |
+| Peter | 1234 | 17 |
+| Anna | 4321 | 25 |
+在上面的例子中,你用一个模板命名为“自定义”,名字的tablewithheaderrowandcolumn '和' tablewithfirstrowandlastrow两表样式安装”. (重要:产生上述模板所需的OpenDocument款式已预先定义的你.这些方式下部分标记为“自定义表格模板可在orgodtcontenttemplate.xml (see [Factory styles], page 169). 如果你需要额外的模板,你必须自己定义这些样式.
+使用此功能进行如下:
+1.	创建一个表template34
+表格模板只是下列表格单元格类别的一组“表单元格”和“段落”样式:
+ - Body
+ - First column
+ - Last column
+ - First row
+ - Last row
+ - Even row
+ - Odd row
+ - Even column
+ - Odd Column
+上述样式的名称必须根据表模板的名称选择使用定义良好的约定.
+命名惯例更好地说明了一个例子.对于带有“自定义”名称的表模板,在下面的表中列出所需的样式名称.
+Table cell type table-cell style paragraph style
+Body ‘CustomTableCell’ ‘CustomTableParagraph’
+First column ‘CustomFirstColumnTableCell’ ‘CustomFirstColumnTableParagraph’
+Last column ‘CustomLastColumnTableCell’ ‘CustomLastColumnTableParagraph’
+First row ‘CustomFirstRowTableCell’ ‘CustomFirstRowTableParagraph’
+Last row ‘CustomLastRowTableCell’ ‘CustomLastRowTableParagraph’
+Even row ‘CustomEvenRowTableCell’ ‘CustomEvenRowTableParagraph’
+Odd row ‘CustomOddRowTableCell’ ‘CustomOddRowTableParagraph’
+Even column ‘CustomEvenColumnTableCell’ ‘CustomEvenColumnTableParagraph’
+Odd column ‘CustomOddColumnTableCell’ ‘CustomOddColumnTableParagraph’
+创建具有“自定义”名称的表模板,在< Office:自动样式>…< Office:自动样式>内容的元素中定义上述样式模板文件(see [Factory styles], page 169).
+2.	定义一个表style35
+定义一个表格样式,创建的变量在组织中的条目和org-odt-tablestyles指定以下:
+-	步骤(1)中创建的表模板的名称
+-	要触发的模板中的单元格样式集
+例如,下面的条目定义了两种不同的表格样式的tablewithheaderrowandcolumn” “tablewithfirstrowandlastrow基于同一模板自定义.样式通过选择性地触发该模板中的单个单元格样式来达到预期的效果.
+(setq org-odt-table-styles
+(append org-odt-table-styles
+'(("TableWithHeaderRowAndColumn" "Custom"
+((use-first-row-styles . t)
+(use-first-column-styles . t)))
+("TableWithFirstRowandLastRow" "Custom"
+((use-first-row-styles . t)
+(use-last-row-styles . t))))))
+3.	将表格与表格样式相关联
+为此,指定步创建表样式(2)的attr_odt线如下图所示部分.
+#+ATTR_ODT: :style "TableWithHeaderRowAndColumn"
+| Name | Phone | Age |
+| Peter | 1234 | 17 |
+| Anna | 4321 | 25 |
+Validating OpenDocument XML
+偶尔,你会发现通过ODT导出者不能创建文档是您最喜爱的应用程序打开.其中一个常见的原因是ODT文件已损坏.在这种情况下,你可能想验证文档对OpenDocument RELAXNG紧凑语法(RNC)模式.
+for the odt file36:-压缩:看到信息文件Emacs,节点‘File Archives’..对于xml文件的验证(和模式敏感编辑)的一般帮助:看到信息文件nxml-mode, 节点 ‘Introduction’.
+如果你已经准备好进入OpenDocument.RNC文件和所需的架构在一个文件夹中的规则定位,您可以自定义变量org ODT模式目录指向该目录.ODT导出者将要更新的RNG模式为你查找文件.
+
+
+12.13Org导出
+    Org导出后端在当前缓冲区中创建组织文档的标准化版本.特别是,它评估Babel代码(参照第14.5节[评估代码块],第198页)并删除其他后端特定内容.
+Org输出命令
+C-c C-e o o org-org-export-to-org
+    对于一个Org文件,myfile.org,作为Org格式导出,结果文件将是myfile.org.org.该文件将被覆盖,没有警告.
+C-c C-e O O org-org-export-as-org
+    导出到临时缓冲区. 不创建一个文件.
+C-c C-e O v
+    导出一个Org文件,并打开它.
+12.14 Texinfo导口
+    “texinfo”导出后端生成Texinfo代码,并可以将其编译成一个信息文件.
+12.14.1 Texinfo导出命令
+C-c C-e i t org-texinfo-export-to-texinfo
+    对于一个Org文件,myfile.org,作为Texinfo格式导出,结果文件将是myfile.texi. 文件将被覆盖,没有警告
+C-c C-e i i org-texinfo-export-to-info
+    导出到Texinfo,然后审核信息文件.[37]通过设置组织texinfo信息过程中,有可能产生的其他格式,包括DocBook
+12.14.2 Texinfo指定导出设置
+    Texinfo出口商引入了一些关键字,类似于一般选项(参照第12.2节[导出设置],第136页)中介绍的设置.
+'SUBTITLE'
+文件标题.
+'SUBAUTHOR'
+文件作者.
+'TEXINFO_FILENAME'
+Texinfo文件名称.
+'TEXINFO_CLASS'
+文档的类(org-texinfo-default-class). 必须是org-texinfo类的成员.
+'TEXINFO_HEADER'
+标题末尾插入任意行.
+'TEXINFO_POST_HEADER'
+在标题结束后,插入任意行
+'TEXINFO_DIR_CATEGORY'
+文件的目录类别.
+'TEXINFO_DIR_TITLE'
+文件的目录标题.
+'TEXINFO_DIR_DESC'
+文件的目录描述.
+'TEXINFO_PRINTED_TITLE'
+文件的打印标题.
+12.14.3 Texinfo fle标题
+    在创建Texinfo的标题时,后端猜测要编译的信息文件的名称,不是一个很好的选择,例如,如果你想生成的最终文档在不同的目录下.使用#+ TEXINFO_FILENAME的关键字,指定备用路径覆盖默认路径.除了输出的名称,标题包含有关语言的信息(见第12.2节[导出设置],第136页)和当前使用的编码.插入#+ TEXINFO_HEADER为每个附加命令的关键字,例如@code {@synindex}.如果您碰巧定期安装相同的命令集,那么可能更容易弄清楚在org-texinfo-classes中你自己的类.相应地设置#+ TEXINFO_CLASS关键字在你的文件激活它.
+12.14.4 Texinfo标题和版权页
+默认模板包括硬拷贝输出的标题页.标题和作者,分别从#+ TITLE和#+ AUTHOR关键字中提取此页面上显示的内容(参见第12.2节[导出设置],第136页).也可以使用#+ TEXINFO_PRINTED_TITLE关键字打印不同更具体的标题,并使用#+ SUBTITLE关键词添加标题.两者都能达到原始Texinfo代码的效果.同样,#+ AUTHOR带来的信息可能还不够.你可以包括其他具有多个#+ SUBAUTHOR关键字的作者.值也将以Texinfo代码编写.
+#+AUTHOR:Jane Smith
+#+ SUBAUTHOR:John Doe
+#+ TEXINFO_PRINTED_TITLE:This long title @ inlinefmt {tex,@ *}在@TeX {}中被破坏
+    复制材料在专用标题中为非零:COPYING:property.内容在文档开头的@copying命令中插入而标题本身不会出现在文档的结构中.版权信息印在标题页的背面.
+*Copying
+:PROPERTIES:
+:COPYING:t
+:END:
+    这是一个完整的Texinfo文件1.0版本的简短示例.
+version 1.0.Copyright \copy 2016 Free Software Foundation, Inc.
+12.14.5 Texinfo'Top'节点
+    您最终可能需要在系统中安装新的Info文件.您可以在顶级目录中编写一个适当的条目,指定其类别和标题,分别为#+ TEXINFO_DIR_CATEGORY和#+ TEXINFO_DIR_TITLE.或者,您可以使用#+ TEXINFO_DIR_DESC添加简短描述.以下示例将在“顶部”节点中写入类似于Org的条目.
+#+ TEXINFO_DIR_CATEGORY:Emacs
+#+ TEXINFO_DIR_TITLE:组织模式:(组织)
+#+ TEXINFO_DIR_DESC:基于大纲的笔记管理和组织者
+12.14.6标题和分段结构
+    “texinfo”使用一个预先定义的格式,或类,将标题为texinfo构建命令.例如,一个顶级的标题显示为@chapter或者以另外的方式@unnumbered.如果你需要使用不同的命令集,例如,例如启动使用@part而不是@chapter,在org-texinfo-classes中安装一个新类,然后激活它与#+ TEXINFO_CLASS关键字.当文档中没有这样的关键字时,导出过程默认为org-texinfo-defaultclass.如果标题的级别没有关联的结构化命令或低于某个阈值(请参见第12.2节“导出设置”,第136页),该标题将成为Texinfo中的列表输出.
+    作为例外,标题为非零:附录:属性成为附录,独立于其水平和使用的类.每个常规分段结构创建一个菜单项,以标题命名.您可以在“ALT_TITLE:property”中提供不同的例如较短的标题(参见第12.3节[目录],第139页).或者,您可以指定项目的描述DESCRIPTION:property.例如:
+*Controlling Screen Display
+:PROPERTIES:
+:ALT_TITLE:Display
+:DESCRIPTION:Controlling Screen Display
+:END:
+12.14.7索引
+    使用专用关键字创建索引条目. 'texinfo'后端提供一个每个预定义类型:#+ CINDEX,#+ FINDEX,#+ KINDEX,#+ PINDEX,#+ TINDEX和#+ VINDEX.对于自定义索引,您可以编写原始Texinfo代码(参见第12.14.8节[引用Texinfo代码] #+ CINDEX:定义索引条目要生成索引,您需要将标题的:INDEX:属性设置为适当的缩写(例如,'cp'或'vr').标题然后作为无编号的章节或部分命令导出,索引将在其内容之后插入
+*Concept Index
+:PROPERTIES:
+:INDEX:cp
+:END:
+12.14.8引用Texinfo代码
+    可以使用以下任何结构插入原始Texinfo代码
+Richard @@texinfo:@sc{@@Stallman@@texinfo:}@@ commence' GNU.
+#+TEXINFO: @need800
+This paragraph is preceded by...
+#+BEGIN_EXPORT texinfo
+@auindex Johnson, Mark
+@auindex Lakoff, George
+#+END_EXPOR
+12.14.9 Texinfo出口的清单
+    在Texinfo输出中,描述列表使用默认命令显示为两列表@table.您可以使用@ftable或@ vtable代替:table-type属性.在任何情况下,这些构造需要列表中的条目的突出显示命令.您可以提供一个:indic属性.如果没有,则默认为存储的值org-texinfo-def-table-markup.如下:
+#+ ATTR_TEXINFO::indic @asis
+- foo ::这是/ foo /的文本,没有突出显示.
+12.14.10 Texinfo导出表
+    导出表时,每列的最长单元格中都会推出列宽.您也可以使用:columns属性明确定义线长度的分数.
+#+ ATTR_TEXINFO::columns .5 .5
+| a cell | another cell |
+12.14.11 Texinfo导出中的图像
+    图像与支持图像扩展并没有描述的文件链接.图像缩放设置为:width和:height属性.您也可以使用:alt来指定替代文本,如Texinfo代码.
+#+ ATTR_TEXINFO::width 1in:alt Alternate @i {text}
+[[ridt.pdf]]
+12.14.12特殊区块
+    在Texinfo输出中,特殊块成为同名命令.Options值的属性在命令开始后添加.例如:
+#+ attr_texinfo::options org-org-export-to-org ...
+#+ begin_defun
+A somewhat obsessive function
+#+ end_defun
+becomes
+@defun org-org-export-to-org ...
+A somewhat obsessive function
+@end defun
+12.14.13 Texinfo示例
+    这是一个全面的例子.看信息文件texinfo,节点'GNU Sample Texts'用于等效的Texinfo代码.
+#+BEGIN_SRC org
+   #+MACRO: version 2.0
+   #+MACRO: updated last updated 4 March 2014
+   #+OPTIONS: ':t toc:t author:t email:t
+   #+TITLE: GNU Sample {{{version}}}
+   #+AUTHOR: A.U. Thor
+   #+EMAIL: bug-sample@gnu.org
+   #+LANGUAGE: en
+   #+TEXINFO_FILENAME: sample.info
+   #+TEXINFO_HEADER: @syncodeindex pg cp
+   #+TEXINFO_DIR_CATEGORY: Texinfo documentation system
+   #+TEXINFO_DIR_TITLE: sample: (sample)
+   #+TEXINFO_DIR_DESC: Invoking sample
+   #+TEXINFO_PRINTED_TITLE: GNU Sample
+   #+SUBTITLE: for version {{{version}}}, {{{updated}}}
+   * Copying
+     :PROPERTIES:
+     :COPYING: t
+     :END:
+     This manual is for GNU Sample (version {{{version}}},
+     {{{updated}}}), which is an example in the Texinfo documentation.
+
+     Copyright @@texinfo:@copyright{}@@ 2013 Free Software Foundation,Inc.
+
+     #+BEGIN_QUOTE
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.3 or any later version published by the Free SoftwareChapter 12: Exporting 178
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts. A copy of the license is included in
+     the section entitled "GNU Free Documentation License".
+     #+END_QUOTE
+
+   * Invoking sample
+
+     #+PINDEX: sample
+     #+CINDEX: invoking @command{sample}
+     This is a sample manual. There is no sample program to invoke, but
+     if there were, you could see its basic usage and command line
+     options here.
+   * GNU Free Documentation License
+     :PROPERTIES:
+     :APPENDIX: t
+     :END:
+
+     #+TEXINFO: @include fdl.texi
+
+   * Index
+     :PROPERTIES:
+     :INDEX: cp
+     :END:
+#+END_SRC
+12.15 iCalendar导出
+    有些人使用org模式来跟踪项目,但仍然喜欢用标准的日程表应用程序来制定周年纪念和约会.在这种情况下,它可以用来显示最后期限和日历应用程序中org结构中的其他时间戳项目.Org模式可以以标准iCalendar格式导出日历信息.如果你也想拥有包含在导出中的TODO条目配置变量org-icalendar-includetodo.普通时间戳作为VEVENT导出,TODO项作为VTODO导出.它会也从非TODO项目的截止日期创建事件.截止日期和时间安排TODO项目中的日期将用于设置TODO条目的开始日期和到期日.如类别,它将使用标题中本地定义的标签,以及文件/树类别.请参阅变量org-icalendar-alarm-time分配一个报警记录.
+iCalendar标准要求每个条目具有全局唯一标识符(UID).Org在导出过程中创建这些标识符.如果你设置变量org iCalendar storeuid,UID将存储在:身份证:进入和重新使用的下次报告该项财产.因为一个单一的输入可以产生多个iCalendar条目(如时间戳,期限,计划项目,TODO项目),org会根据触发的条目的内容向UID增加前缀.这样的UID仍然是独一无二的,但同步程序仍然可以从不同实例中产生.
+C-c C-e f f org-icalendar-export-to-ics
+为当前缓冲区创建iCalendar条目并将它们保存在同一个目录中,使用扩展名.ics.
+C-c C-e c a org-icalendar-export-agenda-files
+与C-c C-e c f一样,但是对于org-Agenda-files中的所有文件都这样做.对于每个文件将单独写入iCalendar文件中.
+C-c C-e c c org-icalendar-combine-agenda-files
+从org-agenda-file 中的所有文件创建一个单个大型iCalendar,并写入它由org-icalendar-combined-agenda-file 给出.
+    如果出口将符合SUMMARY,DESCRIPTION和LOCATION42属性选定的条目有它们.如果没有,总结将来自标题,描述来自正文(仅限于org-icalendar-include-body的特征).
+    如何更好地阅读和更新日历,具体取决于您使用的应用程序.FAQ涉及此问题.
+12.16其他内置后端
+    除上述的后端之外,Org附带了其他内置的后端
+    •ox-man.el:导出到操作页.
+    要激活这些导出后端,请定制org-export-backends或直接加载它们,例如(需要'ox-man).这将在导出调度程序中添加新的键(参见第12.1节[出口调度员],第135页).
+    有关如何使用它们的更多信息,请参阅这些文章的注释部分.
+12.17高级配置
+Hooks
+在出口过程的第一步中运行两个hooks.第一个,org-exportbefore-processing-hook在扩展宏之前调用,Babel代码和include关键字在缓冲区内.第二个,org-export-before-parsing-hook,顾名思义,在解析之前发生.他们的主要用途是繁重的任务,这是涉及文件结构修改的职责.例如,您可能希望在导出过程中删除缓冲区中的每个标题.下面的代码可以实现这个:
+(defun my-headline-removal (backend)
+"Remove all headlines in the current buffer.
+BACKEND is the export back-end being used, as a symbol."
+(org-map-entries
+(lambda () (delete-region (point) (progn (forward-line) (point))))))
+(add-hook 'org-export-before-parsing-hook 'my-headline-removal )
+请注意,这些hooks中使用的函数需要一个强制参数,一个表示后端使用的符号.
+Filters
+过滤器是应用于给定后端的输出的特定部分的函数的列表.更明确地说,每次后端将Org对象或元素转换成另一种语言时,给定的轮询类型中的所有函数依次被调用 在字符串上生成.最后一个函数返回的字符串将是最终输出中使用的字符串
+每个类型的元素或对象都有过滤器集,对于纯文本,对于解析树,
+出口选择和产出. 他们都以同样的方案命名:
+org-export-filter-TYPE-functions ,其中TYPE是该类型的目标类型. 有效
+类型是
+body                 bold               babel-call
+center-block           clock              code
+diary-sexp            drawer             dynamic-block
+entity                example-block      export-block
+export-snippet         fnal-output         fxed-width
+footnote-defnition      footnote-reference    headline
+horizontal-rule         inline-babel-call     inline-src-block
+inlinetask             italic              item
+keyword            latex-environment     latex-fragment
+line-break           link                 node-property
+options             paragraph            parse-tree
+plain-list            plain-text            planning
+property-drawer      quote-block           radio-target
+section             special-block         src-block
+statistics-cookie      strike-through         subscript
+superscript          table                table-cell
+table-row           target                timestamp
+underline           verbatim             verse-block
+例如,以下代码段允许在org缓冲区中使用不间断的空格,并将它们翻译成LATEX,而不使用\ nbsp宏(其中_表示不间断的空格)
+(defun my-latex-filter-nobreaks (text backend info)
+"Ensure \"_\" are properly handled in LaTeX export."
+(when (org-export-derived-backend-p backend 'latex)
+(replace-regexp-in-string "_" "~" text)))
+(add-to-list 'org-export-filter-plain-text-functions
+'my-latex-filter-nobreaks)
+必须为过滤器提供三个参数:正在更改的代码、后端使用的信息以及导出过程的一些信息.您可以安全地忽略大多数参数的第三个参数.注意org-export-derived-backend-p的使用,以确保过滤器将只能采用latex后端或任何其他后端来自它的时候(例如,投影仪)
+自定义过滤器
+您可以通过使用导出过滤器变量来定制仅一个特定文件的导出#+ BIND. 这里有一个例子,我们介绍两个过滤器,一个用于从时间戳中删除括号,一个完全删除任何贯穿文本. 执行过滤的功能在src块中被定义,允许过滤器功能定义存在于自身中,并确保在需要时功能将在那里
+#+BIND: org-export-filter-timestamp-functions (tmp-f-timestamp)
+#+BIND: org-export-filter-strike-through-functions (tmp-f-strike-through)
+#+begin_src emacs-lisp :exports results :results none
+(defun tmp-f-timestamp (s backend info)
+(replace-regexp-in-string "&[lg]t;\\|[][]" "" s))
+(defun tmp-f-strike-through (s backend info) "")
+#+end_src
+扩展现有的后端
+    这显然是最强大的定制,因为更改发生在解析器级别. 事实上,一些导出后端被构建为其他导出后端的扩展(例如,Markdown后端是HTML后端的扩展).
+    扩展后端意味着如果元素类型没有被新的后端转码,那么它将被原始的处理. 因此,您可以扩展后端的特定部分,而无需太多工作.
+例如,假设我们希望ascii后端显示所使用的语言源块,当它可用时,但只有当某个属性不为零时,就像以下
+#+ATTR_ASCII: :language t
+因为这个领域缺乏后端,我们将要创建一个新的后端,我的ascii将做这项工作
+(defun my-ascii-src-block (src-block contents info)
+"Transcode a SRC-BLOCK element from Org to ASCII.
+CONTENTS is nil. INFO is a plist used as a communication
+channel."
+(if (not (org-export-read-attribute :attr_ascii src-block :language))
+(org-export-with-backend 'ascii src-block contents info)
+(concat
+(format ",--[ %s ]--\n%s`----"
+(org-element-property :language src-block)
+(replace-regexp-in-string
+"^" "| "
+(org-element-normalize-string
+(org-export-format-code-default src-block info)))))))
+(org-export-define-derived-backend 'my-ascii 'ascii
+:translate-alist '((src-block . my-ascii-src-block)))
+
+    my-ascii-src-block函数查看元素上方的属性. 如果不是真的,它给了ascii的后端. 否则,它会在代码周围创建一个框,为语言留下空间. 然后创建一个新的后端. 它只会改变其行为当翻译src-block类型元素时. 现在,使用新的后端所需要的就是从组织缓冲区调用以下内容
+(org-export-to-buffer'my-ascii“* Org MY-ASCII Export *”)
+    显然可以为此编写一个交互式功能,将其安装在导出中调度员菜单等.
+12.18外部缓冲区出口
+    多数内置后端都带有选定区域的命令,替换并格式化被导出的区域.以下是此类转换的命令:
+org-html-convert-region-to-html
+将所选区域转换为HTML.
+org-latex-convert-region-to-latex
+将所选区域转换为L ATEX.
+org-texinfo-convert-region-to-texinfo
+将所选区域转换为Texinfo.
+org-md-convert-region-to-md
+将所选区域转换为MarkDown.
+    这对于在外部缓冲区的列表和清单特别有用.例如,HTML可以打开orgstruct-mode,然后使用Org命令编辑列表,并用M-x org-html-convert-region-to-HTML RET来选择和转换列表.
+
+
+* Footnotes
+[fn:exporting1]
+
+[fn:exporting2]
+
+[fn:exporting3]
+
+[fn:exporting4]
+
+[fn:exporting5]
+
+[fn:exporting6]
+
+[fn:exporting7]
+
+[fn:exporting8]
+
+[fn:exporting9]
+
+[fn:exporting10]
+
+[fn:exporting11]
+
+[fn:exporting12]
+
+[fn:exporting13] 但请参阅变量org-html-inline-images.
+
+[fn:exporting14] 默认情况下Org从MathJax.org加载MathJax. 指向MathJax CDN服务条款的链接可以在org-html-mathjax选项的docstring中找到.
+
+[fn:exporting15] 如果TODO关键字的类与标签冲突,请使用变量org-html-todo-kwd-classprefix和org-html-tag-class-prefix使其唯一.
+
+[fn:exporting16] 该样式是在常量org-html-style-default中定义的,不允许修改. 要关闭这些默认设置,请在OPTIONS行中自定义org-html-head-include-default-style或将html-style设置为nil.
+
+[fn:exporting17] LATEX导出可以配置为支持替代的LATEX引擎(参见org-latex-compiler),构建序列(请参阅org-latex-pdf-process)和包(参见org-latex-default-packages-alist)和org-latex-packages-alist.
+
+[fn:exporting18] 您无法通过关键字在文件的基础上设置参考书目编译器. 然而,“智能”LATEX编译系统,如“latexmk”,通常可以选择正确的参考书目编译器.
+
+[fn:exporting19] 将org-latex-default-packages-alist及org-latex-packages-alist的值加入到其中.
+
+[fn:exporting20] 不像LATEX_HEADER,与LATEX_HEADER不同,预览LATEX片段时不会加载LATEX_HEADER_EXTRA关键字 (参见第11.8.2章节 [预览LATEX片段],第133页).
+
+[fn:exporting21] 需要将tabularx包添加到org-latex-packages-alist.
+
+[fn:exporting22] 需要将tabu包添加到org-latex-packages-alist.
+
+[fn:exporting23] 以前,这个价值是侧向稳定的. 自从Org 8.3以来,它已被弃用.
+
+[fn:exporting24] 在TikZ( http://sourceforge.net/projects/pgf/ )图像的情况下,它将成为一个包含在tikzpicture环境中的\ input宏.

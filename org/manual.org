@@ -1,0 +1,14 @@
+#+TITLE: Org mode手册9.0.1
+#+AUTHOR: zchtoy
+#+OPTIONS: ^:{}
+'#+LATEX_HEADER: \usepackage{cnconfig}
+'#+LATEX_CLASS: org-latex-cn
+
+
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual1.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual2.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual3.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual4.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual5.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual6.org"
+#+INCLUDE: "C:\Users\zhouchuanhui\Desktop\org-mode\org-manual7.org"
