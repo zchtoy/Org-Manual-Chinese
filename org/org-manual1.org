@@ -33,7 +33,7 @@
       + 使用Org的git库
    建议只采用一种方法安装.
 
-   * 使用Emacs的Package管理系统
+   *使用Emacs的Package管理系统*
 
    最新的Emacs发行版包含Package管理系统,你可以使用 /M-x package-install RET org/ 安装最新版的Org
 
@@ -41,7 +41,7 @@
 
    然后要保证你的Org配置是有效的,在使用Org选项之前应该在Emacs配置文件内使用(package-initialize)初始化Package管理系统,如果要使用Org的包仓库,请参考[[http://orgmode.org/elpa.html][org ELPA页面]].
 
-   * 以档案包的方式下载Org
+   *以档案包的方式下载Org*
 
    你可以在[[http:orgmode.org][Org官方网站]] 下载最新版的Org.这种方式,请确认在Emacs的配置文件内设置了正确的加载路径.
    #+BEGIN_SRC emacs-lisp

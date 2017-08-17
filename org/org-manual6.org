@@ -1106,31 +1106,51 @@
    -----
    #+END_SRC
 
-12.11 Markdown导出
-Md导出后端为org mode buffer生成Markdown语法.
-它是建立在HTML后端:任何构造没有被Markdown语法支持将被html后端约束和转化.
-Markdown导出命令
-C-c C-e m m
-          导出作为一个text文件被写在Markdown语法里.作为一个org文件myfile.org,造成文件将是myfile.md.这文件将被覆盖外部警告.
-C-c C-e m M
-          导出一个临时缓存,不创建文件.b
-C-c C-e m o
-          导出一个带有Markdown语法的text文件,然后打开它.
-标题和分段结构
-Markdown导出能生成包括atx和setext类型作为标题,例如,org-md-headline-style.前者引入了两个层次的硬限制,而后者推到六
-该限制下的标题列为列表.您也可以设置软限制之前.
-12.12 开放文档格式 Text导出
-Org模式支持OpenDocument text格式.文件创造被这导出者用penDocument-v1.2 specification26 和兼容 LibreOffice 3.4.
-12.12．1 Pre-requisites 为ODT导出
-ODT导出者依赖在zip项目去创造最终输出.检查这项目在进行之前.
-12.12．2 ODT导出命令
+** Markdown导出
+   md导出后端为org mode buffer生成Markdown语法[fn:exporting25].
+
+   它是建立在HTML后端:任何构造没有被Markdown语法支持将被html后端约束和转化(see Section 12.9 [HTML export],page 147).
+
+   *Markdown导出命令*
+
+   * C-c C-e m m (org-md-export-to-markdown)
+
+      导出Markdown语法的文本文件.例如一个org文件myfile.org,将寻出myfile.md.这文件将在没有警告的情况下被覆盖.
+
+   * C-c C-e m M (org-md-export-as-markdown)
+
+      导出一个临时缓存,不创建文件.
+
+   * C-c C-e m o
+
+      导出Markdown语法的文本文件,然后打开它.
+
+   *标题和分段结构*
+
+   Markdown导出根据org-md-headline-style设定能生成atx和setext两种类型标题.前者将将标题层次硬性限制为两级,而后者将标题层次扩展到六级.超出该限制下的标题导出为列表.您也可以设置软限制.(see Section 12.2 [Export settings], page 136).
+
+** OpenDocument text导出
+
+   Org模式支持OpenDocument text(ODT)格式.文件使用 /penDocument-v1.2 specification[fn:exporting26]/ 和兼容 LibreOffice 3.4导出.
+
+*** ODT导出准备
+
+   ODT导出依赖在zip程序创造最终输出.导出前请检查程序的 avail-ability .
+
+*** ODT导出命令
+
 C-c C-e o o
+
 导出作为penDocument text文件.
 如果org-odt-preferred-output-format被规定,自动转换导出文件到该格式.
 对于一个org文件myfile.org,这ODT文件将是myfile.odt.该文件将被覆盖没有警告.如果有一个活跃区域,只有该区域导出.如果选定的区域是一个单一的树,树头将成为文档标题.如果树头项,或继承,一个export_file_名称属性,该名称将用于导出.
+
 C-c C-e o O导出作为一个penDocument text文件和打开结果文件.
+
 如果org-odt-preferred-output-format被规定,打开转换文件.
+
 12.12．3 ODT具体导出设置
+
 这ODT导出者介绍一些关键词,类似于第12.2节中描述的一般选项设置.
 ‘DESCRIPTION’
              文件描述.这些作为文档元数据插入.如果列表长,可以使用几个这样的关键字.
@@ -1138,7 +1158,9 @@ C-c C-e o O导出作为一个penDocument text文件和打开结果文件.
             定义文档内容的关键词.这些作为文档元数据插入.如果列表长,可以使用几个这样的关键字.
 ‘ODT_STYLES_FILE’ 
             文档的样式文件(org-odt-styles-file).查看第12.12.5章节.
+
 12.12．4 延伸ODT导出
+
 ODT导出者可以与各种文档转换器接口,支持常见的转换器的盒子.因此,您可以使用它导出格式,如“DOC”或将一个文件从一种格式(说“CSV”)为另一种格式(说“ODS”或“xls”).如果你有一个工作安装LibreOffice,文件转换器为您预先配置,您可以立即使用它.如果你想使用unoconv作为首选的转换器,自定义变量org ODT转换过程指unoconv.你也可以使用你自己喜欢的转换或调整的LibreOffice默认设置和unoconv的转换器.
 自动导出到其他格式
 你会发现自己导出ODT格式,只有立即保存文件到其他格式,如导出'文件',' docx,“RTF”、“PDF”等.在这种情况下,你可以通过自定义变量org ODT preferredoutput指定您的首选的输出格式.这样,导出的命令(见[Exporting to ODT],,162页)可以扩展到导出到你自己想要的格式.
@@ -1146,10 +1168,13 @@ ODT导出者可以与各种文档转换器接口,支持常见的转换器的盒�
 有许多文件转换器在支持转换和从各种格式的文件,包括但不限于ODT格式.LibreOffice转换器,上面所提到的,就是这样一个转换器.一旦配置了转换器,您可以使用以下命令与它进行交互
 M-x org-odt-convert RET.
            将现有文档从一种格式转换为另一种格式.带前缀参数,还打开新生成的文件.
+
 12.12．5 应用自定义样式
+
 这ODT导出者的一套OpenDocument款式(看 [Working with Open-
 Document style files], page 168) ,确保格式化输出.这些格式风格,但是,可能不符合您的风格.自定义输出,你可以修改上面的样式文件直接生成所需的样式,或者使用LibreOffice应用.后者的方法是适合于专业和非专业用户一样,这里的描述.
 应用自定义样式:简单方法
+
 1.	创建一个样本example.org与下面的设置导出到文件ODT格式.
 2.	打开example.odt使用LibreOffice.使用设计师定位的目标格式,这些通常有'org'前缀和修改那些你的风格.保存修改后的文件为OpenDocument格式文本(.odt)或文档模板(.OTT)文件.
 3．自定义变量org ODT风格文件,它指向新创建的文件.有关附加配置选项参见[Overriding factory styles],169页.
@@ -1159,7 +1184,9 @@ Document style files], page 168) ,确保格式化输出.这些格式风格,但�
    #+ODT_STYLES_FILE:("/path/to/file.ott"("styles.xml" "image/hdr.png"))
 使用第三方样式和模板
 您可以使用第三方样式和模板自定义输出.这将产生所需的输出如果模板提供了所有风格的名字“ODT的导出者依赖.除非满足这个条件,这输出不尽人如意.因此,强烈建议您只使用从环境设置直接派生的模板.
+
 12.12．6 链接ODT导出
+
 ODT导出者创造本地的交叉引用的内部链接.它为所有其他链接创建Internet样式链接.
 一个没有描述和注定要定期(未列出)大纲标题的链接被替换为标题的交叉引用和节号.
 A ‘\ref{label}’-style引用于图像,表等用标记实体的交叉引用和序列号替换.看第12.12.10章节.
