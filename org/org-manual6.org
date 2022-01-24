@@ -1139,13 +1139,15 @@
 
 *** ODT导出命令
 
-C-c C-e o o
+   * C-c C-e o o (org-odt-export-to-odf)
 
-导出作为penDocument text文件.
-如果org-odt-preferred-output-format被规定,自动转换导出文件到该格式.
-对于一个org文件myfile.org,这ODT文件将是myfile.odt.该文件将被覆盖没有警告.如果有一个活跃区域,只有该区域导出.如果选定的区域是一个单一的树,树头将成为文档标题.如果树头项,或继承,一个export_file_名称属性,该名称将用于导出.
+      导出openDocument text文件.
 
-C-c C-e o O导出作为一个penDocument text文件和打开结果文件.
+      如果规定了org-odt-preferred-output-format,将自动转换导出文件到该格式.请参考([Automatically exporting to other formats],page 163P)
+
+      对于一个org文件myfile.org,将导出名为myfile.odt的ODT文件.该文件将被覆盖没有警告.如果有一个激活区域[fn:exporting27],只导出该区域.如果选定的区域是一个单一的树[fn:exporting28],树头将成为文档标题.如果树有条目,或继承,将利用EXPORT_FILE_NAME属性用于导出.
+
+      C-c C-e o O导出penDocument text文件并打开.
 
 如果org-odt-preferred-output-format被规定,打开转换文件.
 
